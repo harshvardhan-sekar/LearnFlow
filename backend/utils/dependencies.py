@@ -39,3 +39,15 @@ async def get_current_user(
         )
 
     return user
+
+
+async def require_researcher(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Restrict access to users with role 'researcher' or 'admin'."""
+    if user.role not in ("researcher", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Researcher access required",
+        )
+    return user

@@ -3,6 +3,7 @@ export interface User {
   email: string;
   display_name: string;
   firebase_uid: string;
+  role: string;
   created_at: string;
 }
 
@@ -94,3 +95,46 @@ export type SessionPhase =
   | "post_assessment"
   | "reflection"
   | "summary";
+
+// ── Admin types ─────────────────────────────────────────────────────────
+
+export interface AdminParticipant {
+  id: number;
+  email: string;
+  display_name: string | null;
+  role: string;
+  created_at: string;
+  session_count: number;
+  last_active: string | null;
+}
+
+export interface AdminSession {
+  id: number;
+  user_id: number | null;
+  user_email: string | null;
+  topic_id: number | null;
+  topic_title: string | null;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+}
+
+export interface AdminEvent {
+  id: number;
+  session_id: number;
+  user_id: number | null;
+  event_type: string;
+  event_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AdminMetrics {
+  total_participants: number;
+  total_sessions: number;
+  total_completed_sessions: number;
+  avg_session_duration_ms: number | null;
+  total_search_events: number;
+  total_chat_events: number;
+  search_to_chat_ratio: number | null;
+  subgoal_completion_rate: number | null;
+}

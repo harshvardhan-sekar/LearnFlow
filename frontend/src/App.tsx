@@ -5,6 +5,7 @@ import { LoggingProvider } from "./contexts/LoggingContext";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import SessionShell from "./components/session/SessionShell";
+import AdminDashboard from "./components/admin/AdminDashboard";
 import type { ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -20,6 +21,28 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== "researcher" && user.role !== "admin") {
+    return <Navigate to="/learn" replace />;
   }
 
   return <>{children}</>;
@@ -56,6 +79,14 @@ function AppRoutes() {
               </LoggingProvider>
             </SessionProvider>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
         }
       />
       {/* V2 placeholders */}
