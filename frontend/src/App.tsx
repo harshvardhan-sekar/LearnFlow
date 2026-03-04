@@ -1,12 +1,92 @@
-function App() {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-900">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-white mb-4">LearnFlow</h1>
-        <p className="text-slate-400">Self-Regulated Learning Tool</p>
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SessionProvider } from "./contexts/SessionContext";
+import LoginPage from "./components/auth/LoginPage";
+import RegisterPage from "./components/auth/RegisterPage";
+import ThreePanelLayout from "./components/layout/ThreePanelLayout";
+import type { ReactNode } from "react";
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-slate-400">Loading...</div>
       </div>
-    </div>
-  )
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }
 
-export default App
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-pulse text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/learn" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/register"
+        element={user ? <Navigate to="/learn" replace /> : <RegisterPage />}
+      />
+      <Route
+        path="/learn"
+        element={
+          <ProtectedRoute>
+            <SessionProvider>
+              <ThreePanelLayout />
+            </SessionProvider>
+          </ProtectedRoute>
+        }
+      />
+      {/* V2 placeholders */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-400">
+              Dashboard — coming in V2
+            </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/test"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-400">
+              Test page — coming in V2
+            </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/learn" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
