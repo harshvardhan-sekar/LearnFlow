@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "../../contexts/SessionContext";
+import { useEventLogger } from "../../hooks/useEventLogger";
 import { sendMessage, getChatHistory } from "../../api/chat";
 import { useSSE } from "../../hooks/useSSE";
 import type { ChatMessage as ChatMessageType } from "../../types";
@@ -8,6 +9,7 @@ import ChatInput from "./ChatInput";
 
 export default function ChatPanel() {
   const { activeSession, currentTopic } = useSession();
+  const { logEvent } = useEventLogger();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -58,10 +60,14 @@ export default function ChatPanel() {
           created_at: new Date().toISOString(),
         },
       ]);
+      logEvent("chat_message", {
+        role: "assistant",
+        content_length: sse.content.length,
+      });
       sse.reset();
     }
     prevStreamingRef.current = sse.isStreaming;
-  }, [sse.isStreaming, sse.content, activeSession?.id, sse.reset]);
+  }, [sse.isStreaming, sse.content, activeSession?.id, sse.reset, logEvent]);
 
   const handleSend = useCallback(
     async (message: string) => {
@@ -76,6 +82,7 @@ export default function ChatPanel() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMsg]);
+      logEvent("chat_message", { role: "user", content_length: message.length });
 
       try {
         const response = await sendMessage({
@@ -98,7 +105,7 @@ export default function ChatPanel() {
         ]);
       }
     },
-    [activeSession, currentTopic, sse]
+    [activeSession, currentTopic, sse, logEvent]
   );
 
   const noSession = !activeSession;

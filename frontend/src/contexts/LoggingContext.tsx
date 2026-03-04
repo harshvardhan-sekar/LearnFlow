@@ -15,8 +15,8 @@ interface LoggingContextValue {
 
 const LoggingContext = createContext<LoggingContextValue | null>(null);
 
-const FLUSH_INTERVAL_MS = 5_000;
-const FLUSH_THRESHOLD = 20;
+const FLUSH_INTERVAL_MS = 30_000;
+const FLUSH_THRESHOLD = 50;
 
 interface QueuedEvent {
   event_type: string;

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { search, logSearchClick } from "../../api/search";
 import { useSession } from "../../contexts/SessionContext";
+import { useEventLogger } from "../../hooks/useEventLogger";
 import type { SearchResult } from "../../types";
 import SearchInput from "./SearchInput";
 import SearchResultItem from "./SearchResult";
 
 export default function SearchPanel() {
   const { activeSession } = useSession();
+  const { logEvent } = useEventLogger();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,7 @@ export default function SearchPanel() {
       setResults(data.results);
       setSearchEventId(data.search_event_id);
       setHasSearched(true);
+      logEvent("search_query", { query, results_count: data.results.length });
     } catch {
       setError("Search failed. Please try again.");
       setResults([]);
@@ -35,6 +38,7 @@ export default function SearchPanel() {
     if (searchEventId) {
       logSearchClick(searchEventId, url, title, position);
     }
+    logEvent("search_click", { url, title, position });
   }
 
   const noSession = !activeSession;
