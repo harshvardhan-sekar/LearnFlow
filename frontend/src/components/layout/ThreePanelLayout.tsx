@@ -8,6 +8,7 @@ import {
 import { motion } from "framer-motion";
 import { useSession } from "../../contexts/SessionContext";
 import SearchPanel from "../search/SearchPanel";
+import ChatPanel from "../chat/ChatPanel";
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -136,14 +137,7 @@ export default function ThreePanelLayout() {
               layout
               className="h-full bg-slate-800/60 backdrop-blur-sm rounded-xl m-1.5 mx-0 border border-slate-700/40 overflow-hidden"
             >
-              <div className="p-4 border-b border-slate-700/40">
-                <h2 className="text-sm font-medium text-slate-300 uppercase tracking-wider">
-                  AI Chat
-                </h2>
-              </div>
-              <div className="p-4 text-slate-500 text-sm">
-                Chat panel — coming soon
-              </div>
+              <ChatPanel />
             </motion.div>
           </Panel>
 
