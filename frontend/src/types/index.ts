@@ -58,3 +58,39 @@ export interface BehavioralEvent {
   data: Record<string, unknown>;
   timestamp: string;
 }
+
+export interface AssessmentQuestion {
+  id: string;
+  question: string;
+  type: "mcq" | "short_answer";
+  options?: string[];
+  correct_answer: string;
+}
+
+export interface Assessment {
+  id: string;
+  session_id: string;
+  assessment_type: "pre" | "post";
+  questions: AssessmentQuestion[];
+  answers: Record<string, string>;
+  score: number | null;
+  total: number;
+  submitted_at: string | null;
+}
+
+export interface Reflection {
+  id: string;
+  session_id: string;
+  content: string;
+  confidence: number;
+  difficulty: number;
+  submitted_at: string;
+}
+
+export type SessionPhase =
+  | "idle"
+  | "pre_assessment"
+  | "learning"
+  | "post_assessment"
+  | "reflection"
+  | "summary";

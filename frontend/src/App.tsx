@@ -4,7 +4,7 @@ import { SessionProvider } from "./contexts/SessionContext";
 import { LoggingProvider } from "./contexts/LoggingContext";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
-import ThreePanelLayout from "./components/layout/ThreePanelLayout";
+import SessionShell from "./components/session/SessionShell";
 import type { ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -52,7 +52,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <SessionProvider>
               <LoggingProvider>
-                <ThreePanelLayout />
+                <SessionShell />
               </LoggingProvider>
             </SessionProvider>
           </ProtectedRoute>
