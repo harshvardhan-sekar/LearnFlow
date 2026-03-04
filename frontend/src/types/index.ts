@@ -35,7 +35,6 @@ export interface Session {
   started_at: string;
   paused_at: string | null;
   ended_at: string | null;
-  total_duration_ms: number;
 }
 
 export interface ChatMessage {
@@ -50,7 +49,7 @@ export interface SearchResult {
   title: string;
   link: string;
   snippet: string;
-  displayLink: string;
+  position: number;
 }
 
 export interface BehavioralEvent {

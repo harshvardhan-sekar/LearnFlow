@@ -68,7 +68,23 @@ export function useSSE(): UseSSEReturn {
           }
 
           try {
-            const parsed = JSON.parse(data) as { content?: string };
+            const parsed = JSON.parse(data) as {
+              content?: string;
+              done?: boolean;
+              error?: string;
+            };
+
+            if (parsed.error) {
+              setError(parsed.error);
+              setIsStreaming(false);
+              return;
+            }
+
+            if (parsed.done) {
+              setIsStreaming(false);
+              return;
+            }
+
             if (parsed.content) {
               setContent((prev) => prev + parsed.content);
             }

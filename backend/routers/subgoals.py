@@ -275,8 +275,10 @@ async def reorder_subgoals(
     )
     await db.commit()
 
-    # Return in new order
+    # Return in new order — refresh to pick up server-side updated_at
     ordered = [subgoals_by_id[sid] for sid in body.subgoal_ids]
+    for sg in ordered:
+        await db.refresh(sg)
     return ordered
 
 

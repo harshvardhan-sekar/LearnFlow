@@ -14,6 +14,7 @@ export default function AssessmentModal({
   onSubmit,
   loading = false,
 }: AssessmentModalProps) {
+  // answers maps question.id → selected option index (as string)
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState<{ correct: number; total: number } | null>(null);
@@ -23,16 +24,11 @@ export default function AssessmentModal({
   }
 
   function handleSubmit() {
-    // Grade locally
     let correct = 0;
     for (const q of questions) {
-      const userAnswer = (answers[q.id] ?? "").trim().toLowerCase();
-      const correctAnswer = q.correct_answer.trim().toLowerCase();
-      if (q.type === "mcq") {
-        if (userAnswer === correctAnswer) correct++;
-      } else {
-        // Short answer: exact match (case-insensitive)
-        if (userAnswer === correctAnswer) correct++;
+      const userAnswer = answers[q.id];
+      if (userAnswer != null && userAnswer === q.correct_answer) {
+        correct++;
       }
     }
     setScore({ correct, total: questions.length });
@@ -43,7 +39,7 @@ export default function AssessmentModal({
     onSubmit(answers);
   }
 
-  const allAnswered = questions.every((q) => (answers[q.id] ?? "").trim() !== "");
+  const allAnswered = questions.every((q) => answers[q.id] != null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -65,9 +61,10 @@ export default function AssessmentModal({
 
               {q.type === "mcq" && q.options ? (
                 <div className="space-y-2 pl-5">
-                  {q.options.map((option) => {
-                    const isSelected = answers[q.id] === option;
-                    const isCorrect = showResults && option.toLowerCase() === q.correct_answer.trim().toLowerCase();
+                  {q.options.map((option, optIdx) => {
+                    const optionIndex = String(optIdx);
+                    const isSelected = answers[q.id] === optionIndex;
+                    const isCorrect = showResults && optionIndex === q.correct_answer;
                     const isWrong = showResults && isSelected && !isCorrect;
 
                     let ringClass = "border-slate-600/50";
@@ -77,15 +74,15 @@ export default function AssessmentModal({
 
                     return (
                       <label
-                        key={option}
+                        key={optIdx}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${ringClass}`}
                       >
                         <input
                           type="radio"
                           name={q.id}
-                          value={option}
+                          value={optionIndex}
                           checked={isSelected}
-                          onChange={() => setAnswer(q.id, option)}
+                          onChange={() => setAnswer(q.id, optionIndex)}
                           disabled={showResults}
                           className="accent-blue-500"
                         />
@@ -139,7 +136,12 @@ export default function AssessmentModal({
                 disabled={loading}
                 className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 text-white text-sm font-medium transition-colors"
               >
-                {loading ? "Submitting..." : "Continue"}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Submitting...
+                  </span>
+                ) : "Continue"}
               </button>
             </div>
           ) : (

@@ -10,8 +10,12 @@ from .config import settings
 
 _log = logging.getLogger(__name__)
 
-# Resolve service-account path relative to project root
-_sa_path = Path(__file__).resolve().parents[2] / settings.FIREBASE_SERVICE_ACCOUNT
+# Resolve service-account path: absolute paths used as-is, relative resolved from project root
+_sa_value = settings.FIREBASE_SERVICE_ACCOUNT
+if Path(_sa_value).is_absolute():
+    _sa_path = Path(_sa_value)
+else:
+    _sa_path = Path(__file__).resolve().parents[2] / _sa_value
 
 if not firebase_admin._apps:
     if _sa_path.exists():

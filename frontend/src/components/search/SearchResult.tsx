@@ -23,7 +23,13 @@ export default function SearchResultItem({
         className="text-left w-full group"
       >
         <p className="text-xs text-slate-400 truncate mb-0.5">
-          {result.displayLink}
+          {(() => {
+            try {
+              return new URL(result.link).hostname;
+            } catch {
+              return result.link;
+            }
+          })()}
         </p>
         <h3 className="text-sm font-medium text-blue-400 group-hover:text-blue-300 group-hover:underline leading-snug">
           {result.title}

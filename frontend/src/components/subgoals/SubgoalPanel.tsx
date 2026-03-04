@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useSession } from "../../contexts/SessionContext";
 import { useLogging } from "../../contexts/LoggingContext";
+import { useToast } from "../../contexts/ToastContext";
 import SubgoalItem from "./SubgoalItem";
 import SubgoalGenerator from "./SubgoalGenerator";
 import * as subgoalsApi from "../../api/subgoals";
@@ -22,6 +23,7 @@ import * as subgoalsApi from "../../api/subgoals";
 export default function SubgoalPanel() {
   const { activeSession, currentTopic, subgoals, setSubgoals } = useSession();
   const { logEvent } = useLogging();
+  const { showToast } = useToast();
 
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -42,63 +44,83 @@ export default function SubgoalPanel() {
 
   const handleGenerate = useCallback(async () => {
     if (!topicId) return;
-    const generated = await subgoalsApi.generateSubgoals(topicId, sessionId);
-    setSubgoals([...subgoals, ...generated]);
-    logEvent("subgoal_create", {
-      action: "ai_generate",
-      count: generated.length,
-      topic_id: topicId,
-    });
-  }, [topicId, sessionId, subgoals, setSubgoals, logEvent]);
+    try {
+      const generated = await subgoalsApi.generateSubgoals(topicId, sessionId);
+      setSubgoals([...subgoals, ...generated]);
+      logEvent("subgoal_create", {
+        action: "ai_generate",
+        count: generated.length,
+        topic_id: topicId,
+      });
+    } catch {
+      showToast("Failed to generate subgoals. Please try again.");
+    }
+  }, [topicId, sessionId, subgoals, setSubgoals, logEvent, showToast]);
 
   const handleToggle = useCallback(
     async (id: string) => {
-      const updated = await subgoalsApi.toggleSubgoal(id, sessionId);
-      setSubgoals(
-        subgoals.map((s) => (s.id === id ? updated : s))
-      );
-      logEvent(updated.is_completed ? "subgoal_check" : "subgoal_uncheck", {
-        subgoal_id: id,
-      });
+      try {
+        const updated = await subgoalsApi.toggleSubgoal(id, sessionId);
+        setSubgoals(
+          subgoals.map((s) => (s.id === id ? updated : s))
+        );
+        logEvent(updated.is_completed ? "subgoal_check" : "subgoal_uncheck", {
+          subgoal_id: id,
+        });
+      } catch {
+        showToast("Failed to update subgoal.");
+      }
     },
-    [sessionId, subgoals, setSubgoals, logEvent]
+    [sessionId, subgoals, setSubgoals, logEvent, showToast]
   );
 
   const handleEdit = useCallback(
     async (id: string, title: string) => {
-      const updated = await subgoalsApi.updateSubgoal(
-        id,
-        { title },
-        sessionId
-      );
-      setSubgoals(subgoals.map((s) => (s.id === id ? updated : s)));
-      logEvent("subgoal_edit", { subgoal_id: id, title });
+      try {
+        const updated = await subgoalsApi.updateSubgoal(
+          id,
+          { title },
+          sessionId
+        );
+        setSubgoals(subgoals.map((s) => (s.id === id ? updated : s)));
+        logEvent("subgoal_edit", { subgoal_id: id, title });
+      } catch {
+        showToast("Failed to save subgoal edit.");
+      }
     },
-    [sessionId, subgoals, setSubgoals, logEvent]
+    [sessionId, subgoals, setSubgoals, logEvent, showToast]
   );
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await subgoalsApi.deleteSubgoal(id, sessionId);
-      setSubgoals(subgoals.filter((s) => s.id !== id));
-      logEvent("subgoal_edit", { action: "delete", subgoal_id: id });
+      try {
+        await subgoalsApi.deleteSubgoal(id, sessionId);
+        setSubgoals(subgoals.filter((s) => s.id !== id));
+        logEvent("subgoal_edit", { action: "delete", subgoal_id: id });
+      } catch {
+        showToast("Failed to delete subgoal.");
+      }
     },
-    [sessionId, subgoals, setSubgoals, logEvent]
+    [sessionId, subgoals, setSubgoals, logEvent, showToast]
   );
 
   const handleAdd = useCallback(async () => {
     const trimmed = newTitle.trim();
     if (!trimmed || !topicId) return;
-    const created = await subgoalsApi.createSubgoal(
-      topicId,
-      trimmed,
-      sessionId
-    );
-    setSubgoals([...subgoals, created]);
-    setNewTitle("");
-    setAdding(false);
-    logEvent("subgoal_create", { subgoal_id: created.id, title: trimmed });
-  }, [newTitle, topicId, sessionId, subgoals, setSubgoals, logEvent]);
+    try {
+      const created = await subgoalsApi.createSubgoal(
+        topicId,
+        trimmed,
+        sessionId
+      );
+      setSubgoals([...subgoals, created]);
+      setNewTitle("");
+      setAdding(false);
+      logEvent("subgoal_create", { subgoal_id: created.id, title: trimmed });
+    } catch {
+      showToast("Failed to add subgoal.");
+    }
+  }, [newTitle, topicId, sessionId, subgoals, setSubgoals, logEvent, showToast]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -125,8 +147,8 @@ export default function SubgoalPanel() {
           to: newIndex,
         });
       } catch {
-        // Revert on failure
         setSubgoals(subgoals);
+        showToast("Failed to reorder subgoals.");
       }
     },
     [subgoals, sessionId, setSubgoals, logEvent]

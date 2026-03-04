@@ -8,6 +8,7 @@ import {
 import { motion } from "framer-motion";
 import { useSession } from "../../contexts/SessionContext";
 import { useEventLogger } from "../../hooks/useEventLogger";
+import { useToast } from "../../contexts/ToastContext";
 import SearchPanel from "../search/SearchPanel";
 import ChatPanel from "../chat/ChatPanel";
 import SubgoalPanel from "../subgoals/SubgoalPanel";
@@ -28,14 +29,16 @@ function SessionTimer() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (activeSession?.status === "active") {
-      const startTime =
-        Date.now() - (activeSession.total_duration_ms || 0);
+    if (activeSession?.status === "active" && activeSession.started_at) {
+      const startTime = new Date(activeSession.started_at).getTime();
       intervalRef.current = setInterval(() => {
         setElapsed(Date.now() - startTime);
       }, 1000);
-    } else {
-      setElapsed(activeSession?.total_duration_ms || 0);
+    } else if (activeSession?.ended_at && activeSession?.started_at) {
+      setElapsed(
+        new Date(activeSession.ended_at).getTime() -
+          new Date(activeSession.started_at).getTime()
+      );
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -53,6 +56,29 @@ export default function ThreePanelLayout() {
   const { activeSession, currentTopic, pauseSession, resumeSession, endSession } =
     useSession();
   const { logEvent } = useEventLogger();
+  const { showToast } = useToast();
+  const [sessionActionLoading, setSessionActionLoading] = useState(false);
+
+  const handlePause = useCallback(async () => {
+    setSessionActionLoading(true);
+    try { await pauseSession(); }
+    catch { showToast("Failed to pause session."); }
+    finally { setSessionActionLoading(false); }
+  }, [pauseSession, showToast]);
+
+  const handleResume = useCallback(async () => {
+    setSessionActionLoading(true);
+    try { await resumeSession(); }
+    catch { showToast("Failed to resume session."); }
+    finally { setSessionActionLoading(false); }
+  }, [resumeSession, showToast]);
+
+  const handleEnd = useCallback(async () => {
+    setSessionActionLoading(true);
+    try { await endSession(); }
+    catch { showToast("Failed to end session."); }
+    finally { setSessionActionLoading(false); }
+  }, [endSession, showToast]);
 
   // Panel focus tracking
   const activePanelRef = useRef<PanelName | null>(null);
@@ -111,26 +137,29 @@ export default function ThreePanelLayout() {
           {activeSession?.status === "active" && (
             <>
               <button
-                onClick={pauseSession}
-                className="px-3 py-1.5 text-sm rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
+                onClick={handlePause}
+                disabled={sessionActionLoading}
+                className="px-3 py-1.5 text-sm rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 disabled:opacity-50 transition-colors"
               >
-                Pause
+                {sessionActionLoading ? "..." : "Pause"}
               </button>
               <button
-                onClick={endSession}
-                className="px-3 py-1.5 text-sm rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                onClick={handleEnd}
+                disabled={sessionActionLoading}
+                className="px-3 py-1.5 text-sm rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
               >
-                Finish Studying
+                {sessionActionLoading ? "..." : "Finish Studying"}
               </button>
             </>
           )}
 
           {activeSession?.status === "paused" && (
             <button
-              onClick={resumeSession}
-              className="px-3 py-1.5 text-sm rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/30 transition-colors"
+              onClick={handleResume}
+              disabled={sessionActionLoading}
+              className="px-3 py-1.5 text-sm rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/30 disabled:opacity-50 transition-colors"
             >
-              Resume
+              {sessionActionLoading ? "..." : "Resume"}
             </button>
           )}
 

@@ -1,6 +1,6 @@
 """Assessments router — GPT-generated pre/post assessments with auto-grading."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -173,7 +173,7 @@ async def submit_answers(
     assessment.answers = body.answers
     assessment.score = score
     assessment.max_score = max_score
-    assessment.completed_at = datetime.now(UTC)
+    assessment.completed_at = datetime.utcnow()
 
     await db.commit()
     await db.refresh(assessment)

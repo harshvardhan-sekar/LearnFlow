@@ -44,7 +44,10 @@ export default function SessionStart() {
         </p>
 
         {fetchingTopics ? (
-          <div className="text-slate-400 text-sm py-4 text-center">Loading topics...</div>
+          <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4">
+            <span className="w-4 h-4 border-2 border-slate-500 border-t-blue-400 rounded-full animate-spin" />
+            Loading topics...
+          </div>
         ) : topics.length === 0 ? (
           <div className="text-slate-400 text-sm py-4 text-center">
             No topics available. Ask your instructor to add learning topics.
@@ -86,7 +89,12 @@ export default function SessionStart() {
           disabled={!selectedTopicId || loading || fetchingTopics}
           className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors"
         >
-          {loading ? "Starting..." : "Start Session"}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Starting...
+            </span>
+          ) : "Start Session"}
         </button>
       </div>
     </div>

@@ -24,7 +24,11 @@ export async function sendMessage(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      message: params.message,
+      session_id: Number(params.session_id),
+      topic_id: Number(params.topic_id),
+    }),
   });
 
   if (!response.ok) {

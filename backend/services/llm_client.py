@@ -33,6 +33,7 @@ async def chat_completion(
     system_prompt: str | None = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.7,
+    max_tokens: int = 2048,
 ) -> dict[str, Any]:
     """Non-streaming chat completion. Returns the full response message and usage."""
     full_messages = _build_messages(system_prompt, messages)
@@ -42,6 +43,7 @@ async def chat_completion(
         model=model,
         messages=full_messages,
         temperature=temperature,
+        max_tokens=max_tokens,
     )
 
     choice = response.choices[0]
@@ -56,6 +58,7 @@ async def stream_completion(
     system_prompt: str | None = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.7,
+    max_tokens: int = 2048,
 ) -> AsyncIterator[str]:
     """Streaming chat completion. Yields content deltas as strings."""
     full_messages = _build_messages(system_prompt, messages)
@@ -65,6 +68,7 @@ async def stream_completion(
         model=model,
         messages=full_messages,
         temperature=temperature,
+        max_tokens=max_tokens,
         stream=True,
         stream_options={"include_usage": True},
     )
@@ -82,6 +86,7 @@ async def json_completion(
     system_prompt: str | None = None,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.3,
+    max_tokens: int = 2048,
 ) -> dict[str, Any]:
     """Chat completion with JSON response format for structured output."""
     full_messages = _build_messages(system_prompt, messages)
@@ -91,6 +96,7 @@ async def json_completion(
         model=model,
         messages=full_messages,
         temperature=temperature,
+        max_tokens=max_tokens,
         response_format={"type": "json_object"},
     )
 
