@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routers import auth, subjects, topics, sessions
+
 app = FastAPI(
     title="LearnFlow — SRL Learning Tool",
     description="Self-Regulated Learning tool with dual search interface and adaptive mastery engine",
@@ -17,6 +19,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Routers ──────────────────────────────────────────────────────────────
+app.include_router(auth.router)
+app.include_router(subjects.router)
+app.include_router(topics.router)
+app.include_router(sessions.router)
 
 
 @app.get("/health")
