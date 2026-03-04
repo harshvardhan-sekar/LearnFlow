@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SessionProvider } from "./contexts/SessionContext";
+import { LoggingProvider } from "./contexts/LoggingContext";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import ThreePanelLayout from "./components/layout/ThreePanelLayout";
@@ -50,7 +51,9 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SessionProvider>
-              <ThreePanelLayout />
+              <LoggingProvider>
+                <ThreePanelLayout />
+              </LoggingProvider>
             </SessionProvider>
           </ProtectedRoute>
         }
