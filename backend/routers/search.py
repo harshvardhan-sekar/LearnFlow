@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.database import get_db
 from models.event import SearchClickEvent, SearchEvent
 from models.user import User
-from services import google_search
+from services import web_search
 from utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -59,17 +59,17 @@ async def search(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Execute a Google search and log the event."""
+    """Execute a web search via Serper and log the event."""
     start = time.perf_counter()
 
     try:
-        results = await google_search.search(body.query)
+        results = await web_search.search(body.query)
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 429:
             raise HTTPException(status_code=429, detail="Search rate limit exceeded")
-        raise HTTPException(status_code=502, detail="Google Search API error")
+        raise HTTPException(status_code=502, detail="Search API error")
 
     elapsed_ms = int((time.perf_counter() - start) * 1000)
 

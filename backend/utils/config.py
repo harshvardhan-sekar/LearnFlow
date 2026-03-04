@@ -28,9 +28,8 @@ class Settings:
     # OpenRouter / LLM
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 
-    # Google Custom Search
-    GOOGLE_SEARCH_API_KEY: str = os.getenv("GOOGLE_SEARCH_API_KEY", "")
-    GOOGLE_SEARCH_CX: str = os.getenv("GOOGLE_SEARCH_CX", "")
+    # Serper Search
+    SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "")
 
 
 settings = Settings()
