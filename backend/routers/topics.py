@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.database import get_db
+from models.subject import Subject
 from models.topic import LearningTopic
 from models.user import User
 from utils.dependencies import get_current_user
@@ -44,6 +45,13 @@ async def create_topic(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if body.subject_id is not None:
+        subj_result = await db.execute(
+            select(Subject).where(Subject.id == body.subject_id)
+        )
+        if subj_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Subject not found")
+
     topic = LearningTopic(
         title=body.title,
         description=body.description,
@@ -60,6 +68,7 @@ async def create_topic(
 @router.get("/", response_model=list[TopicResponse])
 async def list_topics(
     subject_id: int | None = Query(None),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(LearningTopic).order_by(LearningTopic.created_at.desc())
@@ -70,7 +79,11 @@ async def list_topics(
 
 
 @router.get("/{topic_id}", response_model=TopicResponse)
-async def get_topic(topic_id: int, db: AsyncSession = Depends(get_db)):
+async def get_topic(
+    topic_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(LearningTopic).where(LearningTopic.id == topic_id)
     )

@@ -41,13 +41,15 @@ class SessionResponse(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
-async def _get_session_or_404(
-    session_id: int, db: AsyncSession
+async def _get_own_session_or_404(
+    session_id: int, user: User, db: AsyncSession
 ) -> Session:
     result = await db.execute(select(Session).where(Session.id == session_id))
     session = result.scalar_one_or_none()
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your session")
     return session
 
 
@@ -80,7 +82,7 @@ async def end_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    session = await _get_session_or_404(session_id, db)
+    session = await _get_own_session_or_404(session_id, user, db)
     if session.status == "completed":
         raise HTTPException(status_code=400, detail="Session already ended")
     session.status = "completed"
@@ -96,7 +98,7 @@ async def pause_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    session = await _get_session_or_404(session_id, db)
+    session = await _get_own_session_or_404(session_id, user, db)
     if session.status != "active":
         raise HTTPException(
             status_code=400, detail=f"Cannot pause session with status '{session.status}'"
@@ -113,7 +115,7 @@ async def resume_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    session = await _get_session_or_404(session_id, db)
+    session = await _get_own_session_or_404(session_id, user, db)
     if session.status != "paused":
         raise HTTPException(
             status_code=400, detail=f"Cannot resume session with status '{session.status}'"
@@ -164,7 +166,7 @@ async def get_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await _get_session_or_404(session_id, db)
+    return await _get_own_session_or_404(session_id, user, db)
 
 
 @router.put("/{session_id}/state", response_model=SessionResponse)
@@ -175,7 +177,7 @@ async def save_session_state(
     db: AsyncSession = Depends(get_db),
 ):
     """Auto-save UI state (called every ~60s from the frontend)."""
-    session = await _get_session_or_404(session_id, db)
+    session = await _get_own_session_or_404(session_id, user, db)
     session.session_state = body.session_state
     await db.commit()
     await db.refresh(session)
@@ -189,7 +191,7 @@ async def export_session(
     db: AsyncSession = Depends(get_db),
 ):
     """Export session details as markdown."""
-    session = await _get_session_or_404(session_id, db)
+    session = await _get_own_session_or_404(session_id, user, db)
 
     # Get topic title
     topic_title = "Unknown"

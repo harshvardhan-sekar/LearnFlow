@@ -62,7 +62,10 @@ async def create_subject(
 
 
 @router.get("/", response_model=list[SubjectResponse])
-async def list_subjects(db: AsyncSession = Depends(get_db)):
+async def list_subjects(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """List all subjects with their topic counts."""
     stmt = (
         select(
@@ -88,7 +91,11 @@ async def list_subjects(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{subject_id}", response_model=SubjectResponse)
-async def get_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
+async def get_subject(
+    subject_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     stmt = (
         select(
             Subject,
@@ -123,6 +130,8 @@ async def update_subject(
     subject = result.scalar_one_or_none()
     if subject is None:
         raise HTTPException(status_code=404, detail="Subject not found")
+    if subject.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your subject")
 
     if body.title is not None:
         subject.title = body.title
@@ -161,6 +170,8 @@ async def delete_subject(
     subject = result.scalar_one_or_none()
     if subject is None:
         raise HTTPException(status_code=404, detail="Subject not found")
+    if subject.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your subject")
 
     # Ungroup topics (the FK has ondelete=SET NULL, but do it explicitly for clarity)
     topics_result = await db.execute(
