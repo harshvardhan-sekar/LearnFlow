@@ -18,7 +18,11 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      window.location.href = "/login";
+      const path = window.location.pathname;
+      // Only redirect if not already on an auth page (prevents reload loop)
+      if (path !== "/login" && path !== "/register") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
