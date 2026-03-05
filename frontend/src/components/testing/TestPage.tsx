@@ -98,17 +98,17 @@ export default function TestPage() {
   return (
     <div className="h-full bg-slate-900 flex flex-col overflow-hidden">
       {/* Minimal page header */}
-      <header className="flex items-center px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
-        <h1 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
-          Tests
+      <header className="flex items-center px-5 py-2.5 border-b border-slate-700/50 flex-shrink-0">
+        <h1 className="text-sm font-medium text-slate-300">
+          Knowledge Test
         </h1>
       </header>
 
       <div className="flex flex-1 gap-0 overflow-hidden">
         {/* Sidebar: topic selector + history */}
-        <aside className="w-64 flex-shrink-0 border-r border-slate-700/50 flex flex-col p-5 gap-5 overflow-y-auto">
+        <aside className="w-56 flex-shrink-0 border-r border-slate-700/50 flex flex-col p-4 gap-5 overflow-y-auto">
           <div>
-            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-2">
+            <label className="text-xs text-slate-500 block mb-2">
               Topic
             </label>
             <select
@@ -120,8 +120,8 @@ export default function TestPage() {
                 setActiveTest(null);
                 setGradedTest(null);
               }}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg
-                         px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl
+                         px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {topics.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -132,13 +132,13 @@ export default function TestPage() {
           </div>
 
           <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-              Test History
+            <p className="text-xs text-slate-500 mb-3">
+              History
             </p>
             {loadingHistory ? (
               <p className="text-xs text-slate-600 animate-pulse">Loading…</p>
             ) : history.length === 0 ? (
-              <p className="text-xs text-slate-600">No tests yet for this topic.</p>
+              <p className="text-xs text-slate-600">No tests yet.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {history.map((h) => (
@@ -150,13 +150,13 @@ export default function TestPage() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
           {topics.length === 0 ? (
-            <div className="text-center text-slate-400 mt-16">
-              <p>No topics found. Create a topic first in the learning view.</p>
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-slate-400">No topics found. Create a topic first in the learning view.</p>
             </div>
           ) : selectedTopicId == null ? null : (
-            <div className="max-w-xl mx-auto">
+            <>
               {stage === "config" && (
                 <TestGenerator
                   topicId={selectedTopicId}
@@ -164,20 +164,28 @@ export default function TestPage() {
                 />
               )}
               {stage === "taking" && activeTest && (
-                <TestTaker
-                  test={activeTest}
-                  onGraded={handleGraded}
-                  onCancel={handleCancel}
-                />
+                <div className="flex items-start justify-center h-full p-8 overflow-y-auto">
+                  <div className="max-w-2xl w-full">
+                    <TestTaker
+                      test={activeTest}
+                      onGraded={handleGraded}
+                      onCancel={handleCancel}
+                    />
+                  </div>
+                </div>
               )}
               {stage === "result" && gradedTest && (
-                <GradingResult
-                  test={gradedTest}
-                  onRetake={handleRetake}
-                  onDone={handleDone}
-                />
+                <div className="flex items-start justify-center h-full p-8 overflow-y-auto">
+                  <div className="max-w-2xl w-full">
+                    <GradingResult
+                      test={gradedTest}
+                      onRetake={handleRetake}
+                      onDone={handleDone}
+                    />
+                  </div>
+                </div>
               )}
-            </div>
+            </>
           )}
         </main>
       </div>
@@ -194,7 +202,7 @@ function HistoryItem({ item }: { item: TestHistoryItem }) {
       : null;
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2">
+    <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-slate-400 capitalize">{item.grading_mode}</span>
         {pct != null ? (

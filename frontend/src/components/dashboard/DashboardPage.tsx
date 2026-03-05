@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import { generateStudyPlan } from "../../api/dashboard";
@@ -12,6 +12,71 @@ import ProgressChart from "./ProgressChart";
 import WeaknessPanel from "./WeaknessPanel";
 import TestTaker from "../testing/TestTaker";
 import GradingResult from "../testing/GradingResult";
+
+// ── Export helper ──────────────────────────────────────────────────────────
+
+function exportDashboardMarkdown(
+  topicTitle: string,
+  masteredPct: number,
+  masteredCount: number,
+  totalCount: number,
+  concepts: Array<{ name: string; mastery_pct: number; category?: string }>,
+  goals: Array<{ concept_name: string; target_mastery: number; current_mastery?: number; deadline?: string; is_completed?: boolean }>,
+  studyPlan: { summary?: string; items: StudyPlanItem[] } | null,
+) {
+  const lines: string[] = [];
+  lines.push(`# ${topicTitle} — Learning Progress`);
+  lines.push("");
+  lines.push(`**Overall Mastery:** ${masteredPct}%  `);
+  lines.push(`**Concepts Mastered:** ${masteredCount} / ${totalCount}`);
+  lines.push(`**Exported:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`);
+  lines.push("");
+
+  // Concepts
+  lines.push("## Concept Mastery");
+  lines.push("");
+  lines.push("| Concept | Mastery |");
+  lines.push("|---------|---------|");
+  for (const c of concepts.sort((a, b) => b.mastery_pct - a.mastery_pct)) {
+    lines.push(`| ${c.name} | ${Math.round(c.mastery_pct)}% |`);
+  }
+  lines.push("");
+
+  // Goals
+  if (goals.length > 0) {
+    lines.push("## Learning Goals");
+    lines.push("");
+    for (const g of goals) {
+      const status = g.is_completed ? "✅" : "⏳";
+      lines.push(`- ${status} **${g.concept_name}** — target ${g.target_mastery}%${g.deadline ? ` by ${g.deadline}` : ""}`);
+    }
+    lines.push("");
+  }
+
+  // Study Plan
+  if (studyPlan && studyPlan.items.length > 0) {
+    lines.push("## Study Plan");
+    lines.push("");
+    if (studyPlan.summary) {
+      lines.push(studyPlan.summary);
+      lines.push("");
+    }
+    for (const item of studyPlan.items) {
+      const check = item.checked ? "x" : " ";
+      lines.push(`- [${check}] **${item.concept_name}** (${item.priority} priority, ~${item.estimated_time_min} min)`);
+      if (item.rationale) lines.push(`  ${item.rationale}`);
+    }
+    lines.push("");
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${topicTitle.replace(/[^a-zA-Z0-9]/g, "_")}_progress.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ── Quiz overlay (mini inline test triggered from WeaknessPanel) ──────────
 
@@ -174,6 +239,18 @@ function DashboardInner({ topicId }: { topicId: number }) {
     refresh();
   }
 
+  const handleExportMd = useCallback(() => {
+    exportDashboardMarkdown(
+      topicTitle ?? "Unknown Topic",
+      masteredPct,
+      masteredCount,
+      totalCount,
+      concepts,
+      goals,
+      studyPlan,
+    );
+  }, [topicTitle, masteredPct, masteredCount, totalCount, concepts, goals, studyPlan]);
+
   return (
     <div className="h-full bg-slate-900 flex flex-col overflow-hidden">
       {/* Quiz overlay */}
@@ -190,19 +267,32 @@ function DashboardInner({ topicId }: { topicId: number }) {
       <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md flex-shrink-0">
         <div className="px-6 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-slate-200 uppercase tracking-wider truncate">
-              {topicTitle ? `Progress · ${topicTitle}` : "Progress"}
-            </h1>
+            <h2 className="text-lg font-semibold text-white truncate">
+              {topicTitle ? `${topicTitle} — Dashboard` : "Dashboard"}
+            </h2>
             {snapshot && (
-              <p className="text-slate-400 text-xs mt-0.5">
-                {masteredCount} / {totalCount} concepts mastered — {masteredPct}% overall
+              <p className="text-sm text-slate-400 mt-0.5">
+                {masteredPct}% overall mastery · {totalCount} concepts · {masteredCount} mastered
               </p>
             )}
           </div>
 
-          {loading && (
-            <span className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin flex-shrink-0" />
-          )}
+          <div className="flex gap-2 flex-shrink-0">
+            {loading && (
+              <span className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+            )}
+            <button
+              onClick={handleExportMd}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 text-slate-400 border border-slate-700 rounded-xl text-xs hover:bg-slate-700 transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export .md
+            </button>
+          </div>
         </div>
       </header>
 
@@ -214,12 +304,31 @@ function DashboardInner({ topicId }: { topicId: number }) {
             <MasteryHeatmap concepts={concepts} />
           </Panel>
 
-          {/* Panel 2 — Goal Editor */}
+          {/* Panel 2 — Goal Editor + Streaks */}
           <Panel
             title="Learning Goals"
             subtitle={`${goals.filter((g) => !g.is_completed).length} active goal${goals.filter((g) => !g.is_completed).length !== 1 ? "s" : ""}`}
           >
             <GoalEditor concepts={concepts} />
+
+            {/* Streaks & Hint Reliance */}
+            <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔥</span>
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {snapshot?.streak_days ?? 0} day streak
+                  </p>
+                  <p className="text-xs text-slate-500">Keep it going!</p>
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-slate-500">Hint reliance</span>
+                <span className="text-xs text-emerald-400">
+                  ↓ {snapshot?.hint_reliance_pct != null ? `${Math.round(snapshot.hint_reliance_pct)}%` : "—"}
+                </span>
+              </div>
+            </div>
           </Panel>
 
           {/* Panel 3 — Progress Chart */}

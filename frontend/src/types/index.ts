@@ -43,6 +43,7 @@ export interface ChatMessage {
   session_id: string;
   role: "user" | "assistant";
   content: string;
+  citations?: string[];
   created_at: string;
 }
 
@@ -114,6 +115,9 @@ export interface MasterySnapshot {
   not_started_count: number;
   overall_pct: number;
   concepts: ConceptMasteryItem[];
+  // Engagement metrics (optional — populated when backend supports them)
+  streak_days?: number;
+  hint_reliance_pct?: number;
 }
 
 export interface LearnerGoal {

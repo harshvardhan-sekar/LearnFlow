@@ -62,7 +62,7 @@ export default function SubgoalItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+      className={`group flex items-start gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
         isDragging
           ? "bg-slate-600/50 border-blue-500/50 shadow-lg z-10"
           : "bg-slate-700/30 border-slate-700/40 hover:bg-slate-700/50"
@@ -70,7 +70,7 @@ export default function SubgoalItem({
     >
       {/* Drag handle */}
       <button
-        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 transition-colors"
+        className="flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-300 transition-colors"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
@@ -93,7 +93,7 @@ export default function SubgoalItem({
       {/* Checkbox */}
       <button
         onClick={() => onToggle(subgoal.id)}
-        className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+        className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
           subgoal.is_completed
             ? "bg-green-500/30 border-green-500 text-green-400"
             : "border-slate-500 hover:border-blue-400"
@@ -115,52 +115,67 @@ export default function SubgoalItem({
         )}
       </button>
 
-      {/* Title */}
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitEdit();
-            if (e.key === "Escape") {
+      {/* Title + Mastery */}
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitEdit();
+              if (e.key === "Escape") {
+                setEditValue(subgoal.title);
+                setEditing(false);
+              }
+            }}
+            className="w-full bg-slate-600/50 text-slate-100 text-sm px-2 py-0.5 rounded border border-blue-500/50 outline-none"
+          />
+        ) : (
+          <p
+            onDoubleClick={() => {
               setEditValue(subgoal.title);
-              setEditing(false);
-            }
-          }}
-          className="flex-1 min-w-0 bg-slate-600/50 text-slate-100 text-sm px-2 py-0.5 rounded border border-blue-500/50 outline-none"
-        />
-      ) : (
-        <span
-          onDoubleClick={() => {
-            setEditValue(subgoal.title);
-            setEditing(true);
-          }}
-          className={`flex-1 min-w-0 text-sm truncate cursor-default ${
-            subgoal.is_completed
-              ? "line-through text-slate-500"
-              : "text-slate-200"
-          }`}
-          title={subgoal.title}
-        >
-          {subgoal.title}
-        </span>
-      )}
+              setEditing(true);
+            }}
+            className={`text-sm truncate cursor-default ${
+              subgoal.is_completed
+                ? "line-through text-slate-500"
+                : "text-slate-200"
+            }`}
+            title={subgoal.title}
+          >
+            {subgoal.title}
+          </p>
+        )}
 
-      {/* Mastery badge */}
-      {masteryDisplayPct != null ? (
-        <span
-          className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded border font-medium ${masteryBadgeStyle(masteryDisplayPct)}`}
-          title={`Mastery: ${masteryDisplayPct}%`}
-        >
-          {masteryDisplayPct}%
-        </span>
-      ) : (
-        <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded bg-slate-700/40 text-slate-600 border border-slate-700/40">
-          —
-        </span>
-      )}
+        {/* Mastery bar + badge */}
+        <div className="flex items-center gap-2 mt-1">
+          <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${
+                masteryDisplayPct != null
+                  ? masteryDisplayPct >= 67
+                    ? "bg-emerald-500"
+                    : masteryDisplayPct >= 34
+                      ? "bg-amber-500"
+                      : "bg-rose-500"
+                  : "bg-slate-600"
+              }`}
+              style={{ width: `${masteryDisplayPct ?? 0}%` }}
+            />
+          </div>
+          <span
+            className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-mono ${
+              masteryDisplayPct != null
+                ? masteryBadgeStyle(masteryDisplayPct)
+                : "bg-slate-700/40 text-slate-600"
+            }`}
+          >
+            {masteryDisplayPct != null ? `${masteryDisplayPct}%` : "—"}
+          </span>
+        </div>
+      </div>
 
       {/* Delete button (visible on hover) */}
       <button

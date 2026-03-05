@@ -48,29 +48,33 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-lg font-semibold text-white">
-            Question {currentIndex + 1} of {total}
-          </h2>
-          <p className="text-xs text-slate-500 capitalize">
-            {test.grading_mode} grading · {question.question_type}
-          </p>
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-xs text-slate-400">
+          Question {currentIndex + 1} of {total}
+        </span>
+        <div className="flex gap-1">
+          {questions.map((_, i) => (
+            <div
+              key={i}
+              className={`w-8 h-1.5 rounded-full transition-colors ${
+                i === currentIndex
+                  ? "bg-blue-500"
+                  : i < currentIndex || (answers[questions[i].id] ?? "").trim()
+                    ? "bg-emerald-500"
+                    : "bg-slate-700"
+              }`}
+            />
+          ))}
         </div>
-        <button
-          onClick={onCancel}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+        <span
+          className={`text-xs px-2 py-0.5 rounded-md capitalize ${
+            test.grading_mode === "informal"
+              ? "text-emerald-400 bg-emerald-400/10"
+              : "text-violet-400 bg-violet-400/10"
+          }`}
         >
-          Cancel
-        </button>
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-full h-1.5 bg-slate-700 rounded-full mb-6">
-        <div
-          className="h-full bg-indigo-500 rounded-full transition-all"
-          style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
-        />
+          {test.grading_mode}
+        </span>
       </div>
 
       {/* Question card */}

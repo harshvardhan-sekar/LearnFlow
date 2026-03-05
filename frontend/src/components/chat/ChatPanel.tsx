@@ -113,10 +113,9 @@ export default function ChatPanel() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700/40">
-        <h2 className="text-sm font-medium text-slate-300 uppercase tracking-wider">
-          AI Chat
-        </h2>
+      <div className="p-3 border-b border-slate-700/50 flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-300">Chat</span>
+        <span className="text-xs text-slate-500">GPT-4o</span>
       </div>
 
       {/* Messages area */}
@@ -152,7 +151,12 @@ export default function ChatPanel() {
         )}
 
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
+          <ChatMessage
+            key={msg.id}
+            role={msg.role}
+            content={msg.content}
+            citations={msg.citations}
+          />
         ))}
 
         {/* Streaming assistant message */}

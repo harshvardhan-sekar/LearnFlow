@@ -5,6 +5,7 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  citations?: string[];
 }
 
 // Split content into alternating [text, templateJSON, text, templateJSON, ...] segments
@@ -65,6 +66,7 @@ export default function ChatMessage({
   role,
   content,
   isStreaming,
+  citations,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
@@ -111,6 +113,20 @@ export default function ChatMessage({
 
         {isStreaming && (
           <span className="inline-block w-1.5 h-4 ml-0.5 bg-slate-300 animate-pulse rounded-sm align-text-bottom" />
+        )}
+
+        {/* Citations */}
+        {citations && citations.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-slate-600/30 flex flex-wrap gap-2">
+            {citations.map((c, j) => (
+              <span
+                key={j}
+                className="text-xs text-blue-400 hover:underline cursor-pointer"
+              >
+                {"📎"} {c}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>
