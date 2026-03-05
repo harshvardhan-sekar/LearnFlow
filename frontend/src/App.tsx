@@ -7,6 +7,7 @@ import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import SessionShell from "./components/session/SessionShell";
 import AdminDashboard from "./components/admin/AdminDashboard";
+import TestPage from "./components/testing/TestPage";
 import type { ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -105,9 +106,7 @@ function AppRoutes() {
         path="/test"
         element={
           <ProtectedRoute>
-            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-400">
-              Test page — coming in V2
-            </div>
+            <TestPage />
           </ProtectedRoute>
         }
       />
