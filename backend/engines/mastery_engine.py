@@ -51,7 +51,13 @@ def update_mastery(
     # Apply time decay if we know when they were last tested
     decayed_mastery = current_mastery
     if last_tested_at is not None:
-        days_since = (datetime.now(UTC) - last_tested_at).total_seconds() / 86400
+        # Normalize naive datetimes (stored as UTC in DB) to aware for subtraction
+        aware_last = (
+            last_tested_at.replace(tzinfo=UTC)
+            if last_tested_at.tzinfo is None
+            else last_tested_at
+        )
+        days_since = (datetime.now(UTC) - aware_last).total_seconds() / 86400
         decay_factor = exp(-0.693 * days_since / DECAY_HALF_LIFE_DAYS)  # ln(2) ≈ 0.693
         decayed_mastery = current_mastery * decay_factor
 

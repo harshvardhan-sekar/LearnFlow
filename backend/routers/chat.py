@@ -12,8 +12,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.concept import ConceptGraph, ConceptNode
 from models.database import get_db
 from models.event import ChatEvent
+from models.mastery import MasteryState
 from models.session import Session
 from models.subgoal import Subgoal
 from models.topic import LearningTopic
@@ -106,7 +108,36 @@ async def send_chat_message(
         for sg in sg_result.scalars().all()
     ]
 
-    system_prompt = build_chat_system_prompt(topic.title, subgoals)
+    # ── Fetch mastery states for this topic (if a concept graph exists) ──
+    mastery_states = None
+    graph_result = await db.execute(
+        select(ConceptGraph).where(ConceptGraph.topic_id == body.topic_id)
+    )
+    graph = graph_result.scalar_one_or_none()
+    if graph is not None:
+        nodes_result = await db.execute(
+            select(ConceptNode).where(ConceptNode.graph_id == graph.id)
+        )
+        nodes = nodes_result.scalars().all()
+        if nodes:
+            node_id_to_name = {n.id: n.name for n in nodes}
+            ms_result = await db.execute(
+                select(MasteryState).where(
+                    MasteryState.user_id == user.id,
+                    MasteryState.concept_node_id.in_(list(node_id_to_name.keys())),
+                )
+            )
+            states = ms_result.scalars().all()
+            if states:
+                mastery_states = [
+                    {
+                        "concept_name": node_id_to_name[ms.concept_node_id],
+                        "mastery_score": ms.mastery_score,
+                    }
+                    for ms in states
+                ]
+
+    system_prompt = build_chat_system_prompt(topic.title, subgoals, mastery_states)
 
     # ── Build message history from this session ──────────────────────
     history_result = await db.execute(
