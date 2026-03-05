@@ -36,6 +36,7 @@ class QuestionResult(Base):
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     options: Mapped[dict | None] = mapped_column(JSONB)
     correct_answer: Mapped[str | None] = mapped_column(Text)
+    ideal_answer: Mapped[str | None] = mapped_column(Text)
     user_answer: Mapped[str | None] = mapped_column(Text)
     score: Mapped[float | None] = mapped_column(Float)
     max_score: Mapped[float | None] = mapped_column(Float)

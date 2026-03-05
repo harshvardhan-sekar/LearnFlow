@@ -23,6 +23,7 @@ export interface QuestionResult {
   question_text: string;
   options: string[] | null;
   correct_answer: string | null;
+  ideal_answer: string | null;
   user_answer: string | null;
   score: number | null;
   max_score: number | null;

@@ -243,7 +243,7 @@ async def grade_test(
 
     for qr in question_results:
         user_answer = answer_map.get(qr.id, "")
-        ideal_answer = qr.feedback or ""  # stored in feedback column during generation
+        ideal_answer = qr.ideal_answer or ""
         max_score = qr.max_score or 1.0
 
         graded = await grade_answer(

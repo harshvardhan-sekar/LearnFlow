@@ -174,8 +174,7 @@ async def generate_test(
             options=q.get("options"),  # list → stored as JSONB
             correct_answer=q.get("correct_answer"),
             max_score=1.0,
-            # Store ideal_answer in feedback temporarily (grading engine reads it)
-            feedback=q.get("ideal_answer"),
+            ideal_answer=q.get("ideal_answer"),
         )
         db.add(qr)
         created_questions.append(qr)
