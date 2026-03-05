@@ -40,19 +40,33 @@ class UserResponse(BaseModel):
 @router.post("/register", response_model=UserResponse, status_code=201)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Create a user row in PostgreSQL after the frontend has already
-    created the Firebase account.
+    created the Firebase account.  If the email already exists with a
+    different firebase_uid (e.g. the Firebase account was deleted and
+    re-created), update the existing row's firebase_uid.
     """
-    # Check for duplicate firebase_uid or email
-    existing = await db.execute(
-        select(User).where(
-            (User.firebase_uid == body.firebase_uid) | (User.email == body.email)
-        )
+    # Check for exact firebase_uid match first
+    result = await db.execute(
+        select(User).where(User.firebase_uid == body.firebase_uid)
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User with this firebase_uid or email already exists.",
-        )
+    existing_by_uid = result.scalar_one_or_none()
+    if existing_by_uid:
+        # Same firebase_uid already registered — return existing user
+        return existing_by_uid
+
+    # Check for email match with a different firebase_uid
+    result = await db.execute(
+        select(User).where(User.email == body.email)
+    )
+    existing_by_email = result.scalar_one_or_none()
+    if existing_by_email:
+        # Email exists but firebase_uid changed (user was deleted/re-created
+        # in Firebase). Update the uid to keep the DB in sync.
+        existing_by_email.firebase_uid = body.firebase_uid
+        if body.display_name:
+            existing_by_email.display_name = body.display_name
+        await db.commit()
+        await db.refresh(existing_by_email)
+        return existing_by_email
 
     user = User(
         firebase_uid=body.firebase_uid,

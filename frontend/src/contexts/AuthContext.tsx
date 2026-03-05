@@ -72,19 +72,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     displayName: string
   ) {
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    await updateProfile(credential.user, { displayName });
+    let fbUser: FirebaseUser;
+    try {
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      await updateProfile(credential.user, { displayName });
+      fbUser = credential.user;
+    } catch (firebaseErr: unknown) {
+      // If Firebase account already exists, sign in instead
+      const code = (firebaseErr as { code?: string })?.code;
+      if (code === "auth/email-already-in-use") {
+        const credential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        fbUser = credential.user;
+      } else {
+        throw firebaseErr;
+      }
+    }
+    // Ensure backend DB user exists (handles new + re-created Firebase accounts)
     await client.post("/auth/register", {
-      firebase_uid: credential.user.uid,
+      firebase_uid: fbUser.uid,
       email,
       display_name: displayName,
     });
-    // After backend user is created, immediately fetch the profile
-    // so we don't rely on onAuthStateChanged (which races and fails)
+    // Fetch the full user profile
     const { data } = await client.post<User>("/auth/login");
     setUser(data);
   }
