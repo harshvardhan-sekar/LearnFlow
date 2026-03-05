@@ -1,12 +1,13 @@
 """Subgoals CRUD router with AI generation and event logging."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.concept import ConceptGraph, ConceptNode
 from models.database import get_db
 from models.event import SubgoalEvent
 from models.subgoal import Subgoal
@@ -41,6 +42,7 @@ class SubgoalResponse(BaseModel):
     sort_order: int
     is_completed: bool
     is_ai_generated: bool
+    concept_node_key: str | None = None
     completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -189,7 +191,31 @@ async def generate_subgoals_endpoint(
     """
     topic = await _get_topic_or_404(body.topic_id, db)
 
-    generated = await generate_subgoals(topic.title, topic.description)
+    # Check for an existing concept graph to align subgoals with
+    concept_nodes_data: list[dict] | None = None
+    cg_result = await db.execute(
+        select(ConceptGraph).where(ConceptGraph.topic_id == body.topic_id)
+    )
+    cg = cg_result.scalar_one_or_none()
+    if cg is not None:
+        cn_result = await db.execute(
+            select(ConceptNode)
+            .where(ConceptNode.graph_id == cg.id)
+            .order_by(ConceptNode.sort_order)
+        )
+        concept_nodes_data = [
+            {
+                "key": cn.key,
+                "name": cn.name,
+                "description": cn.description or "",
+                "difficulty": cn.difficulty,
+            }
+            for cn in cn_result.scalars().all()
+        ]
+
+    generated = await generate_subgoals(
+        topic.title, topic.description, concept_nodes=concept_nodes_data
+    )
     if not generated:
         raise HTTPException(status_code=500, detail="Failed to generate subgoals")
 
@@ -211,6 +237,7 @@ async def generate_subgoals_endpoint(
             description=sg_data["description"],
             sort_order=max_order + idx + 1,
             is_ai_generated=True,
+            concept_node_key=sg_data.get("concept_node_key"),
         )
         db.add(sg)
         created.append(sg)
@@ -326,7 +353,7 @@ async def toggle_subgoal(
     sg = await _get_subgoal_or_404(subgoal_id, user, db)
 
     sg.is_completed = not sg.is_completed
-    sg.completed_at = datetime.utcnow() if sg.is_completed else None
+    sg.completed_at = datetime.now(UTC) if sg.is_completed else None
 
     await db.commit()
     await db.refresh(sg)

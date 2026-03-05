@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import admin, auth, chat, search, subjects, subgoals, topics, sessions, logs, assessments, reflections
+from routers import admin, auth, chat, concepts, search, subjects, subgoals, topics, sessions, logs, assessments, reflections
 
 app = FastAPI(
     title="LearnFlow — SRL Learning Tool",
@@ -27,6 +27,7 @@ app.include_router(subjects.router)
 app.include_router(topics.router)
 app.include_router(sessions.router)
 app.include_router(subgoals.router)
+app.include_router(concepts.router)
 app.include_router(search.router)
 app.include_router(chat.router)
 app.include_router(logs.router)
