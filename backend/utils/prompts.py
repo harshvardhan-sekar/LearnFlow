@@ -5,18 +5,39 @@ from __future__ import annotations
 from typing import Any
 
 
+def _format_mastery_block(mastery_states: list[dict[str, Any]]) -> str:
+    """Format mastery states into a readable block for the system prompt."""
+    if not mastery_states:
+        return "  (no mastery data yet — treat all concepts as new)"
+
+    lines = []
+    for state in mastery_states:
+        score = state.get("mastery", state.get("mastery_score", 0.0))
+        name = state.get("concept_name", state.get("concept_key", "unknown"))
+        if score < 0.3:
+            level = "LOW"
+        elif score < 0.7:
+            level = "MEDIUM"
+        else:
+            level = "HIGH"
+        lines.append(f"  - {name}: {score:.2f} [{level}]")
+
+    return "\n".join(lines)
+
+
 def build_chat_system_prompt(
     topic: str,
     subgoals: list[dict[str, Any]],
-    mastery_states: dict[int, float] | None = None,
+    mastery_states: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Build the chat system prompt with topic context and subgoal progress.
+    """Build the chat system prompt with topic context, subgoal progress, and mastery.
 
     Args:
         topic: The learning topic title.
         subgoals: List of subgoal dicts with keys: title, is_completed, sort_order.
-        mastery_states: Optional mapping of subgoal_id -> mastery score (0-1).
-                        Reserved for V2 mastery integration.
+        mastery_states: Optional list of mastery dicts with keys: concept_name (or
+            concept_key), mastery (or mastery_score). When provided, the prompt
+            instructs the AI to adapt explanation depth per mastery level.
     """
     # Format subgoal list with completion status
     subgoal_lines = []
@@ -26,11 +47,24 @@ def build_chat_system_prompt(
 
     subgoal_block = "\n".join(subgoal_lines) if subgoal_lines else "  (no subgoals set)"
 
+    mastery_block = _format_mastery_block(mastery_states or [])
+
     return f"""\
 You are a Socratic learning tutor helping a student study: **{topic}**
 
 ## The student's learning subgoals:
 {subgoal_block}
+
+## Student's current concept mastery:
+{mastery_block}
+
+Use mastery levels to calibrate your explanations:
+- **LOW mastery (<0.3):** Explain fundamentals, use simple language and concrete \
+examples, avoid assumed prior knowledge.
+- **MEDIUM mastery (0.3–0.7):** Challenge with deeper questions, introduce nuance \
+and edge cases, ask the student to make connections between concepts.
+- **HIGH mastery (>0.7):** Connect to advanced topics, explore exceptions and \
+real-world complexity, encourage the student to explain things back to you.
 
 ## Your role:
 - Guide the student toward understanding — never just give away the answer.
