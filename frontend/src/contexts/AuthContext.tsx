@@ -61,6 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     await signInWithEmailAndPassword(auth, email, password);
+    // Explicitly fetch user profile after sign-in to handle cases
+    // where onAuthStateChanged already fired with a stale/failed state
+    const { data } = await client.post<User>("/auth/login");
+    setUser(data);
   }
 
   async function register(
@@ -79,6 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       display_name: displayName,
     });
+    // After backend user is created, immediately fetch the profile
+    // so we don't rely on onAuthStateChanged (which races and fails)
+    const { data } = await client.post<User>("/auth/login");
+    setUser(data);
   }
 
   async function logout() {
