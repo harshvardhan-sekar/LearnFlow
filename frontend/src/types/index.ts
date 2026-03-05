@@ -95,6 +95,48 @@ export type SessionPhase =
   | "reflection"
   | "summary";
 
+// ── Dashboard / Mastery types ────────────────────────────────────────────
+
+export interface ConceptMasteryItem {
+  concept_node_id: number;
+  concept_key: string;
+  concept_name: string;
+  difficulty: string;
+  mastery_score: number;
+  attempts_count: number;
+}
+
+export interface MasterySnapshot {
+  total_concepts: number;
+  mastered_count: number;
+  in_progress_count: number;
+  not_started_count: number;
+  overall_pct: number;
+  concepts: ConceptMasteryItem[];
+}
+
+export interface LearnerGoal {
+  id: number;
+  topic_id: number;
+  concept_node_id: number | null;
+  concept_name: string | null;
+  target_mastery: number;
+  deadline: string | null;
+  priority: number;
+  is_completed: boolean;
+  is_ai_suggested: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardData {
+  topic_id: number;
+  topic_title: string;
+  mastery_snapshot: MasterySnapshot;
+  goals: LearnerGoal[];
+  study_plan: Record<string, unknown> | null;
+}
+
 // ── Admin types ─────────────────────────────────────────────────────────
 
 export interface AdminParticipant {

@@ -8,6 +8,7 @@ import RegisterPage from "./components/auth/RegisterPage";
 import SessionShell from "./components/session/SessionShell";
 import AdminDashboard from "./components/admin/AdminDashboard";
 import TestPage from "./components/testing/TestPage";
+import DashboardPage from "./components/dashboard/DashboardPage";
 import type { ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -91,14 +92,11 @@ function AppRoutes() {
           </AdminRoute>
         }
       />
-      {/* V2 placeholders */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-400">
-              Dashboard — coming in V2
-            </div>
+            <DashboardPage />
           </ProtectedRoute>
         }
       />
