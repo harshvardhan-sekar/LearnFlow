@@ -1,5 +1,6 @@
 """Firebase Admin SDK initialisation and token verification."""
 
+import json
 import logging
 from pathlib import Path
 
@@ -10,23 +11,38 @@ from .config import settings
 
 _log = logging.getLogger(__name__)
 
-# Resolve service-account path: absolute paths used as-is, relative resolved from project root
 _sa_value = settings.FIREBASE_SERVICE_ACCOUNT
-if Path(_sa_value).is_absolute():
-    _sa_path = Path(_sa_value)
-else:
-    _sa_path = Path(__file__).resolve().parents[2] / _sa_value
 
 if not firebase_admin._apps:
-    if _sa_path.exists():
-        cred = credentials.Certificate(str(_sa_path))
-        firebase_admin.initialize_app(cred, {"projectId": settings.FIREBASE_PROJECT_ID})
+    # Accept either a raw JSON string (Railway env var) or a file path (local dev)
+    if _sa_value.strip().startswith("{"):
+        try:
+            sa_dict = json.loads(_sa_value)
+            cred = credentials.Certificate(sa_dict)
+            firebase_admin.initialize_app(cred, {"projectId": settings.FIREBASE_PROJECT_ID})
+            _log.info("Firebase initialised from inline JSON credentials.")
+        except Exception as exc:
+            _log.warning(
+                "Failed to initialise Firebase from inline JSON: %s — "
+                "token verification will fail.",
+                exc,
+            )
     else:
-        _log.warning(
-            "Firebase service-account file not found at %s — "
-            "token verification will fail until the file is provided.",
-            _sa_path,
-        )
+        # Resolve file path: absolute used as-is, relative resolved from project root
+        if Path(_sa_value).is_absolute():
+            _sa_path = Path(_sa_value)
+        else:
+            _sa_path = Path(__file__).resolve().parents[2] / _sa_value
+
+        if _sa_path.exists():
+            cred = credentials.Certificate(str(_sa_path))
+            firebase_admin.initialize_app(cred, {"projectId": settings.FIREBASE_PROJECT_ID})
+        else:
+            _log.warning(
+                "Firebase service-account file not found at %s — "
+                "token verification will fail until the file is provided.",
+                _sa_path,
+            )
 
 
 def verify_firebase_token(id_token: str) -> dict:

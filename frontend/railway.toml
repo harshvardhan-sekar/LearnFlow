@@ -1,0 +1,13 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[build.args]
+# These must also be set as Railway env vars so they are passed at build time
+VITE_API_URL = ""
+VITE_FIREBASE_CONFIG = ""
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"

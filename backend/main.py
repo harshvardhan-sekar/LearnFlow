@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,12 +11,20 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Base allowed origins (local dev)
+_allow_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+# Extra origins from env var (e.g. specific Railway frontend URL)
+_extra = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_allow_origins.extend(_extra)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_allow_origins,
+    # Covers all *.up.railway.app subdomains without hardcoding service names
+    allow_origin_regex=r"https://.*\.up\.railway\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
