@@ -135,7 +135,7 @@ async def list_subgoals(
     return result.scalars().all()
 
 
-@router.post("/", response_model=SubgoalResponse, status_code=201)
+@router.post("", response_model=SubgoalResponse, status_code=201)
 async def create_subgoal(
     body: SubgoalCreate,
     user: User = Depends(get_current_user),

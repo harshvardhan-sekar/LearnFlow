@@ -39,7 +39,7 @@ class TopicResponse(BaseModel):
 
 # ── Routes ───────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=TopicResponse, status_code=201)
+@router.post("", response_model=TopicResponse, status_code=201)
 async def create_topic(
     body: TopicCreate,
     user: User = Depends(get_current_user),
@@ -65,7 +65,7 @@ async def create_topic(
     return topic
 
 
-@router.get("/", response_model=list[TopicResponse])
+@router.get("", response_model=list[TopicResponse])
 async def list_topics(
     subject_id: int | None = Query(None),
     user: User = Depends(get_current_user),

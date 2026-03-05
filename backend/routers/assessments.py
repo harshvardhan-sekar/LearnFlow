@@ -112,7 +112,7 @@ def _grade_assessment(questions: list[dict], answers: dict) -> tuple[float, floa
 # ── Routes ───────────────────────────────────────────────────────────────
 
 
-@router.post("/", response_model=AssessmentResponse, status_code=201)
+@router.post("", response_model=AssessmentResponse, status_code=201)
 async def create_assessment(
     body: AssessmentCreate,
     user: User = Depends(get_current_user),

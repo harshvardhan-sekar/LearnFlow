@@ -55,7 +55,7 @@ async def _get_own_session_or_404(
 
 # ── Routes ───────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=SessionResponse, status_code=201)
+@router.post("", response_model=SessionResponse, status_code=201)
 async def start_session(
     body: SessionCreate,
     user: User = Depends(get_current_user),
@@ -143,7 +143,7 @@ async def get_active_session(
     return session
 
 
-@router.get("/", response_model=list[SessionResponse])
+@router.get("", response_model=list[SessionResponse])
 async def list_sessions(
     user: User = Depends(get_current_user),
     topic_id: int | None = Query(None),

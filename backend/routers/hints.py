@@ -32,7 +32,7 @@ class HintRequest(BaseModel):
 # ── Route ─────────────────────────────────────────────────────────────────
 
 
-@router.post("/")
+@router.post("")
 async def request_hint(
     body: HintRequest,
     user: User = Depends(get_current_user),

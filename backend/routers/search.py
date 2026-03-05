@@ -53,7 +53,7 @@ class ClickResponse(BaseModel):
 
 # ── Routes ───────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=SearchResponse)
+@router.post("", response_model=SearchResponse)
 async def search(
     body: SearchRequest,
     user: User = Depends(get_current_user),

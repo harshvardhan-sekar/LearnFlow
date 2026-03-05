@@ -41,7 +41,7 @@ class SubjectResponse(BaseModel):
 
 # ── Routes ───────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=SubjectResponse, status_code=201)
+@router.post("", response_model=SubjectResponse, status_code=201)
 async def create_subject(
     body: SubjectCreate,
     user: User = Depends(get_current_user),
@@ -61,7 +61,7 @@ async def create_subject(
     )
 
 
-@router.get("/", response_model=list[SubjectResponse])
+@router.get("", response_model=list[SubjectResponse])
 async def list_subjects(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

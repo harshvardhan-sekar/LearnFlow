@@ -9,6 +9,7 @@ app = FastAPI(
     title="LearnFlow — SRL Learning Tool",
     description="Self-Regulated Learning tool with dual search interface and adaptive mastery engine",
     version="0.1.0",
+    redirect_slashes=False,
 )
 
 # Base allowed origins (local dev)

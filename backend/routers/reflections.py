@@ -56,7 +56,7 @@ async def _get_own_session_or_404(
 # ── Routes ───────────────────────────────────────────────────────────────
 
 
-@router.post("/", response_model=ReflectionResponse, status_code=201)
+@router.post("", response_model=ReflectionResponse, status_code=201)
 async def create_reflection(
     body: ReflectionCreate,
     user: User = Depends(get_current_user),

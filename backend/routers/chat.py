@@ -70,7 +70,7 @@ async def _get_active_session_or_400(
 # ── Routes ───────────────────────────────────────────────────────────────
 
 
-@router.post("/")
+@router.post("")
 async def send_chat_message(
     body: ChatRequest,
     user: User = Depends(get_current_user),
