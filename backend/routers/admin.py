@@ -8,15 +8,19 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import case, extract, func, select
+from sqlalchemy import case, cast, Date, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.assessment import Assessment
+from models.concept import ConceptNode
+from models.dashboard_state import LearnerGoal
 from models.database import get_db
 from models.event import BehavioralEvent, ChatEvent, SearchEvent
+from models.mastery import MasteryState
 from models.reflection import Reflection
 from models.session import Session
 from models.subgoal import Subgoal
+from models.test_record import QuestionResult, TestRecord
 from models.topic import LearningTopic
 from models.user import User
 from utils.dependencies import require_researcher
@@ -72,6 +76,25 @@ class MetricsResponse(BaseModel):
     total_chat_events: int
     search_to_chat_ratio: float | None
     subgoal_completion_rate: float | None
+
+
+class ParticipantMasteryItem(BaseModel):
+    user_id: int
+    email: str
+    avg_mastery: float
+
+
+class TestScoreDataPoint(BaseModel):
+    date: str
+    avg_score_pct: float
+    test_count: int
+
+
+class V2MetricsResponse(BaseModel):
+    participant_mastery: list[ParticipantMasteryItem]
+    test_scores_over_time: list[TestScoreDataPoint]
+    avg_hints_per_question: float | None
+    goal_completion_rate: float | None
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
@@ -221,7 +244,8 @@ async def export_csv(
     _user: User = Depends(require_researcher),
     db: AsyncSession = Depends(get_db),
 ):
-    """Export all data as a ZIP of CSVs (sessions, events, assessments, reflections)."""
+    """Export all data as a ZIP of CSVs (sessions, events, assessments, reflections,
+    test_records, mastery_states, goals)."""
 
     def _date_filters(stmt, date_col):
         if from_date is not None:
@@ -274,6 +298,41 @@ async def export_csv(
     reflections_stmt = _date_filters(reflections_stmt, Reflection.created_at)
     reflections_rows = (await db.execute(reflections_stmt)).all()
 
+    # Test records (V2)
+    test_records_stmt = select(
+        TestRecord.id, TestRecord.user_id, TestRecord.topic_id,
+        TestRecord.session_id, TestRecord.grading_mode,
+        TestRecord.total_score, TestRecord.max_score,
+        TestRecord.questions_count, TestRecord.created_at, TestRecord.completed_at,
+    )
+    test_records_stmt = _user_filter(test_records_stmt, TestRecord.user_id)
+    test_records_stmt = _date_filters(test_records_stmt, TestRecord.created_at)
+    test_records_rows = (await db.execute(test_records_stmt)).all()
+
+    # Mastery states (V2) — join with concept nodes for concept_key
+    mastery_stmt = (
+        select(
+            MasteryState.id, MasteryState.user_id, MasteryState.concept_node_id,
+            ConceptNode.key.label("concept_key"), ConceptNode.name.label("concept_name"),
+            MasteryState.mastery_score, MasteryState.attempts_count,
+            MasteryState.correct_count, MasteryState.last_tested_at, MasteryState.updated_at,
+        )
+        .outerjoin(ConceptNode, MasteryState.concept_node_id == ConceptNode.id)
+    )
+    mastery_stmt = _user_filter(mastery_stmt, MasteryState.user_id)
+    mastery_rows = (await db.execute(mastery_stmt)).all()
+
+    # Learner goals (V2)
+    goals_stmt = select(
+        LearnerGoal.id, LearnerGoal.user_id, LearnerGoal.topic_id,
+        LearnerGoal.concept_node_id, LearnerGoal.target_mastery,
+        LearnerGoal.deadline, LearnerGoal.priority,
+        LearnerGoal.is_completed, LearnerGoal.is_ai_suggested,
+        LearnerGoal.created_at, LearnerGoal.updated_at,
+    )
+    goals_stmt = _user_filter(goals_stmt, LearnerGoal.user_id)
+    goals_rows = (await db.execute(goals_stmt)).all()
+
     # Build ZIP in memory
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -297,6 +356,21 @@ async def export_csv(
                 "reflections.csv",
                 ["id", "session_id", "user_id", "reflection_text", "confidence_rating", "difficulty_rating", "created_at"],
                 reflections_rows,
+            ),
+            (
+                "test_records.csv",
+                ["id", "user_id", "topic_id", "session_id", "grading_mode", "total_score", "max_score", "questions_count", "created_at", "completed_at"],
+                test_records_rows,
+            ),
+            (
+                "mastery_states.csv",
+                ["id", "user_id", "concept_node_id", "concept_key", "concept_name", "mastery_score", "attempts_count", "correct_count", "last_tested_at", "updated_at"],
+                mastery_rows,
+            ),
+            (
+                "learner_goals.csv",
+                ["id", "user_id", "topic_id", "concept_node_id", "target_mastery", "deadline", "priority", "is_completed", "is_ai_suggested", "created_at", "updated_at"],
+                goals_rows,
             ),
         ]:
             csv_buf = io.StringIO()
@@ -374,4 +448,84 @@ async def get_metrics(
         total_chat_events=total_chat,
         search_to_chat_ratio=ratio,
         subgoal_completion_rate=subgoal_rate,
+    )
+
+
+@router.get("/metrics/v2", response_model=V2MetricsResponse)
+async def get_v2_metrics(
+    _user: User = Depends(require_researcher),
+    db: AsyncSession = Depends(get_db),
+):
+    """V2 research metrics: mastery progression, test scores, hint patterns, goal rates."""
+
+    # 1. Average mastery per participant
+    mastery_stmt = (
+        select(
+            MasteryState.user_id,
+            User.email,
+            func.avg(MasteryState.mastery_score).label("avg_mastery"),
+        )
+        .join(User, MasteryState.user_id == User.id)
+        .group_by(MasteryState.user_id, User.email)
+        .order_by(User.email)
+    )
+    mastery_rows = (await db.execute(mastery_stmt)).all()
+    participant_mastery = [
+        ParticipantMasteryItem(
+            user_id=r.user_id,
+            email=r.email,
+            avg_mastery=round(r.avg_mastery, 4),
+        )
+        for r in mastery_rows
+    ]
+
+    # 2. Test scores over time (last 30 data points, grouped by day)
+    scores_stmt = (
+        select(
+            cast(TestRecord.created_at, Date).label("test_date"),
+            func.avg(
+                TestRecord.total_score / func.nullif(TestRecord.max_score, 0) * 100
+            ).label("avg_score_pct"),
+            func.count(TestRecord.id).label("test_count"),
+        )
+        .where(
+            TestRecord.completed_at.isnot(None),
+            TestRecord.max_score > 0,
+        )
+        .group_by(cast(TestRecord.created_at, Date))
+        .order_by(cast(TestRecord.created_at, Date).desc())
+        .limit(30)
+    )
+    scores_rows = (await db.execute(scores_stmt)).all()
+    test_scores_over_time = [
+        TestScoreDataPoint(
+            date=str(r.test_date),
+            avg_score_pct=round(r.avg_score_pct or 0.0, 1),
+            test_count=r.test_count,
+        )
+        for r in reversed(scores_rows)  # chronological order
+    ]
+
+    # 3. Average hints used per question
+    avg_hints_result = await db.execute(
+        select(func.avg(QuestionResult.hints_used))
+        .where(QuestionResult.hints_used > 0)
+    )
+    avg_hints_raw = avg_hints_result.scalar_one()
+    avg_hints_per_question = round(avg_hints_raw, 2) if avg_hints_raw is not None else None
+
+    # 4. Goal completion rate
+    total_goals = (await db.execute(select(func.count(LearnerGoal.id)))).scalar_one()
+    completed_goals = (await db.execute(
+        select(func.count(LearnerGoal.id)).where(LearnerGoal.is_completed == True)  # noqa: E712
+    )).scalar_one()
+    goal_completion_rate = (
+        round(completed_goals / total_goals, 4) if total_goals > 0 else None
+    )
+
+    return V2MetricsResponse(
+        participant_mastery=participant_mastery,
+        test_scores_over_time=test_scores_over_time,
+        avg_hints_per_question=avg_hints_per_question,
+        goal_completion_rate=goal_completion_rate,
     )

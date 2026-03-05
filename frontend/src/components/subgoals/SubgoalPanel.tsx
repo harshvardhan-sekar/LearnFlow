@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,8 @@ import { useToast } from "../../contexts/ToastContext";
 import SubgoalItem from "./SubgoalItem";
 import SubgoalGenerator from "./SubgoalGenerator";
 import * as subgoalsApi from "../../api/subgoals";
+import { getTopicMastery } from "../../api/mastery";
+import type { MasteryStateItem } from "../../api/mastery";
 
 export default function SubgoalPanel() {
   const { activeSession, currentTopic, subgoals, setSubgoals } = useSession();
@@ -27,9 +29,32 @@ export default function SubgoalPanel() {
 
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [masteryMap, setMasteryMap] = useState<Map<string, number>>(new Map());
 
   const sessionId = activeSession?.id;
   const topicId = currentTopic?.id;
+
+  // Fetch mastery states for the current topic to show per-subgoal badges
+  useEffect(() => {
+    if (!topicId) {
+      setMasteryMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    getTopicMastery(Number(topicId))
+      .then((states: MasteryStateItem[]) => {
+        if (cancelled) return;
+        const map = new Map<string, number>();
+        for (const s of states) {
+          map.set(s.concept_key, s.mastery_score);
+        }
+        setMasteryMap(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [topicId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -281,15 +306,22 @@ export default function SubgoalPanel() {
               items={subgoals.map((s) => s.id)}
               strategy={verticalListSortingStrategy}
             >
-              {subgoals.map((subgoal) => (
-                <SubgoalItem
-                  key={subgoal.id}
-                  subgoal={subgoal}
-                  onToggle={handleToggle}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
+              {subgoals.map((subgoal) => {
+                const masteryPct =
+                  subgoal.concept_node_key != null
+                    ? masteryMap.get(subgoal.concept_node_key) ?? null
+                    : null;
+                return (
+                  <SubgoalItem
+                    key={subgoal.id}
+                    subgoal={subgoal}
+                    masteryPct={masteryPct}
+                    onToggle={handleToggle}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                );
+              })}
             </SortableContext>
           </DndContext>
         )}

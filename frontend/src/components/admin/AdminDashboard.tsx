@@ -4,7 +4,13 @@ import {
   getSessions,
   getEvents,
   getMetrics,
+  getV2Metrics,
   downloadCsvExport,
+} from "../../api/admin";
+import type {
+  ParticipantMasteryItem,
+  TestScoreDataPoint,
+  V2Metrics,
 } from "../../api/admin";
 import type {
   AdminParticipant,
@@ -73,6 +79,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [v2Metrics, setV2Metrics] = useState<V2Metrics | null>(null);
   const [participants, setParticipants] = useState<AdminParticipant[]>([]);
   const [sessions, setSessions] = useState<AdminSession[]>([]);
   const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -88,8 +95,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [m, p] = await Promise.all([getMetrics(), getParticipants()]);
+        const [m, v2, p] = await Promise.all([getMetrics(), getV2Metrics(), getParticipants()]);
         setMetrics(m);
+        setV2Metrics(v2);
         setParticipants(p);
         const s = await getSessions();
         setSessions(s);
@@ -218,6 +226,114 @@ export default function AdminDashboard() {
                 : "—"
             }
           />
+        </div>
+      )}
+
+      {/* V2 Metrics */}
+      {v2Metrics && (
+        <div className="mb-8 space-y-6">
+          {/* Summary row */}
+          <div className="grid grid-cols-2 gap-4">
+            <MetricCard
+              label="Avg Hints per Question"
+              value={
+                v2Metrics.avg_hints_per_question != null
+                  ? v2Metrics.avg_hints_per_question.toFixed(1)
+                  : "—"
+              }
+            />
+            <MetricCard
+              label="Goal Completion Rate"
+              value={
+                v2Metrics.goal_completion_rate != null
+                  ? `${Math.round(v2Metrics.goal_completion_rate * 100)}%`
+                  : "—"
+              }
+            />
+          </div>
+
+          {/* Test scores over time */}
+          {v2Metrics.test_scores_over_time.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold mb-3">Test Scores Over Time</h2>
+              <div className="overflow-x-auto rounded-xl border border-slate-700/40">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-800/80">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-slate-400 font-medium">Date</th>
+                      <th className="text-right px-4 py-2.5 text-slate-400 font-medium">Avg Score</th>
+                      <th className="text-right px-4 py-2.5 text-slate-400 font-medium">Tests</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30">
+                    {v2Metrics.test_scores_over_time.map((row: TestScoreDataPoint) => (
+                      <tr key={row.date} className="hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5 text-slate-300">{row.date}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <span
+                            className={
+                              row.avg_score_pct >= 70
+                                ? "text-emerald-400"
+                                : row.avg_score_pct >= 40
+                                  ? "text-amber-400"
+                                  : "text-red-400"
+                            }
+                          >
+                            {Math.round(row.avg_score_pct)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-slate-300">{row.test_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* Participant mastery table */}
+          {v2Metrics.participant_mastery.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold mb-3">Mastery by Participant</h2>
+              <div className="overflow-x-auto rounded-xl border border-slate-700/40">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-800/80">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-slate-400 font-medium">Participant</th>
+                      <th className="text-right px-4 py-2.5 text-slate-400 font-medium">Avg Mastery</th>
+                      <th className="text-right px-4 py-2.5 text-slate-400 font-medium">Concepts</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30">
+                    {v2Metrics.participant_mastery.map((row: ParticipantMasteryItem) => (
+                      <tr key={row.user_id} className="hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5">
+                          <div>{row.email}</div>
+                          {row.display_name && (
+                            <div className="text-xs text-slate-500">{row.display_name}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <span
+                            className={
+                              row.avg_mastery >= 0.7
+                                ? "text-emerald-400"
+                                : row.avg_mastery >= 0.4
+                                  ? "text-amber-400"
+                                  : "text-red-400"
+                            }
+                          >
+                            {Math.round(row.avg_mastery * 100)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-slate-300">{row.concept_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </div>
       )}
 

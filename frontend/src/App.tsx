@@ -9,6 +9,7 @@ import SessionShell from "./components/session/SessionShell";
 import AdminDashboard from "./components/admin/AdminDashboard";
 import TestPage from "./components/testing/TestPage";
 import DashboardPage from "./components/dashboard/DashboardPage";
+import AppShell from "./components/layout/AppShell";
 import type { ReactNode } from "react";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -72,31 +73,19 @@ function AppRoutes() {
         path="/register"
         element={user ? <Navigate to="/learn" replace /> : <RegisterPage />}
       />
+
+      {/* All user routes share SessionProvider + AppShell sidebar */}
       <Route
         path="/learn"
         element={
           <ProtectedRoute>
             <SessionProvider>
-              <LoggingProvider>
-                <SessionShell />
-              </LoggingProvider>
+              <AppShell>
+                <LoggingProvider>
+                  <SessionShell />
+                </LoggingProvider>
+              </AppShell>
             </SessionProvider>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminDashboard />
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
           </ProtectedRoute>
         }
       />
@@ -104,8 +93,33 @@ function AppRoutes() {
         path="/test"
         element={
           <ProtectedRoute>
-            <TestPage />
+            <SessionProvider>
+              <AppShell>
+                <TestPage />
+              </AppShell>
+            </SessionProvider>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <SessionProvider>
+              <AppShell>
+                <DashboardPage />
+              </AppShell>
+            </SessionProvider>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
         }
       />
       <Route path="*" element={<Navigate to="/learn" replace />} />

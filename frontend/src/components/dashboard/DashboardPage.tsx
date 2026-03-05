@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import { generateStudyPlan } from "../../api/dashboard";
 import { generateTest } from "../../api/tests";
@@ -118,7 +118,6 @@ function QuizOverlay({
 // ── Inner page (needs MasteryContext) ────────────────────────────────────
 
 function DashboardInner({ topicId }: { topicId: number }) {
-  const navigate = useNavigate();
   const {
     snapshot,
     goals,
@@ -172,12 +171,11 @@ function DashboardInner({ topicId }: { topicId: number }) {
   }
 
   function handleQuizDone() {
-    // Refresh dashboard so mastery + recommendations update
     refresh();
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="h-full bg-slate-900 flex flex-col overflow-hidden">
       {/* Quiz overlay */}
       {quizTarget && (
         <QuizOverlay
@@ -188,39 +186,16 @@ function DashboardInner({ topicId }: { topicId: number }) {
         />
       )}
 
-      {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <button
-            onClick={() => navigate("/learn")}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back to Learning
-          </button>
-
-          <div className="h-4 w-px bg-slate-700" />
-
+      {/* Page header */}
+      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md flex-shrink-0">
+        <div className="px-6 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-semibold truncate">
-              {topicTitle || "Dashboard"}
+            <h1 className="text-sm font-semibold text-slate-200 uppercase tracking-wider truncate">
+              {topicTitle ? `Progress · ${topicTitle}` : "Progress"}
             </h1>
             {snapshot && (
-              <p className="text-slate-400 text-sm">
-                {masteredCount} / {totalCount} concepts mastered &mdash;{" "}
-                {masteredPct}% overall
+              <p className="text-slate-400 text-xs mt-0.5">
+                {masteredCount} / {totalCount} concepts mastered — {masteredPct}% overall
               </p>
             )}
           </div>
@@ -231,8 +206,8 @@ function DashboardInner({ topicId }: { topicId: number }) {
         </div>
       </header>
 
-      {/* 2×2 grid */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-6 space-y-6">
+      {/* Scrollable content */}
+      <main className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Panel 1 — Mastery Heatmap */}
           <Panel title="Mastery Heatmap" subtitle="Concepts by difficulty level">
@@ -247,7 +222,7 @@ function DashboardInner({ topicId }: { topicId: number }) {
             <GoalEditor concepts={concepts} />
           </Panel>
 
-          {/* Panel 3 — Progress Chart (replaces static Progress Overview) */}
+          {/* Panel 3 — Progress Chart */}
           <Panel title="Progress Chart" subtitle="Test scores over time">
             <ProgressChart
               topicId={topicId}
@@ -257,7 +232,7 @@ function DashboardInner({ topicId }: { topicId: number }) {
             />
           </Panel>
 
-          {/* Panel 4 — Weakness Panel (replaces Study Focus) */}
+          {/* Panel 4 — Weakness Panel */}
           <Panel
             title="Weak Areas"
             subtitle="Ranked by study priority · take action"
@@ -440,7 +415,6 @@ function Panel({
 // ── Topic picker (shown when no topicId in URL) ───────────────────────────
 
 function TopicPicker() {
-  const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
   const [topics, setTopics] = useState<LearningTopic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -454,7 +428,7 @@ function TopicPicker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="h-full flex items-center justify-center bg-slate-900">
         <div className="flex items-center gap-2 text-slate-400 text-sm">
           <span className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
           Loading topics…
@@ -464,28 +438,9 @@ function TopicPicker() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+    <div className="h-full flex items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-sm bg-slate-800/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-        <button
-          onClick={() => navigate("/learn")}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm mb-5"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
-          Back
-        </button>
-        <h1 className="text-xl font-bold text-white mb-1">Dashboard</h1>
+        <h1 className="text-xl font-bold text-white mb-1">Progress Dashboard</h1>
         <p className="text-slate-400 text-sm mb-6">
           Select a topic to view your mastery progress.
         </p>

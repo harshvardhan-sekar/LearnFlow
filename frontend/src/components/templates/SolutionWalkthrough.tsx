@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import StepNavigator from "../ui/StepNavigator";
 import DataTable from "../ui/DataTable";
 import CodeBlock from "../ui/CodeBlock";
@@ -44,6 +44,15 @@ export default function SolutionWalkthrough({
 }) {
   const totalSteps = data.steps.length + (data.final_answer ? 1 : 0);
   const [current, setCurrent] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  const goTo = useCallback((next: number) => {
+    setVisible(false);
+    setTimeout(() => {
+      setCurrent(next);
+      setVisible(true);
+    }, 120);
+  }, []);
 
   const isFinalStep = data.final_answer && current === data.steps.length;
   const step = !isFinalStep ? data.steps[current] : null;
@@ -67,8 +76,11 @@ export default function SolutionWalkthrough({
         </div>
       </div>
 
-      {/* Step content */}
-      <div className="px-5 py-4 min-h-[160px]">
+      {/* Step content with fade transition */}
+      <div
+        className="px-5 py-4 min-h-[160px] transition-opacity duration-150"
+        style={{ opacity: visible ? 1 : 0 }}
+      >
         {isFinalStep && data.final_answer ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -123,8 +135,8 @@ export default function SolutionWalkthrough({
         <StepNavigator
           currentStep={current}
           totalSteps={totalSteps}
-          onPrev={() => setCurrent((c) => Math.max(0, c - 1))}
-          onNext={() => setCurrent((c) => Math.min(totalSteps - 1, c + 1))}
+          onPrev={() => goTo(Math.max(0, current - 1))}
+          onNext={() => goTo(Math.min(totalSteps - 1, current + 1))}
         />
       </div>
     </div>

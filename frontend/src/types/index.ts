@@ -23,6 +23,7 @@ export interface Subgoal {
   order_index: number;
   is_completed: boolean;
   source: "ai_generated" | "user_created";
+  concept_node_key: string | null;
   created_at: string;
   updated_at: string;
 }

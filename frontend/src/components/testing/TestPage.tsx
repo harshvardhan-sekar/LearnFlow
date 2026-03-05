@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import type { LearningTopic } from "../../types";
 import type { TestRecord } from "../../api/tests";
@@ -12,6 +12,7 @@ import GradingResult from "./GradingResult";
 type Stage = "config" | "taking" | "result";
 
 export default function TestPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const topicParam = searchParams.get("topic");
 
@@ -70,10 +71,15 @@ export default function TestPage() {
     setStage("config");
   }
 
+  // After viewing results, navigate to dashboard so mastery updates are visible
   function handleDone() {
-    setActiveTest(null);
-    setGradedTest(null);
-    setStage("config");
+    if (selectedTopicId != null) {
+      navigate(`/dashboard?topic=${selectedTopicId}`);
+    } else {
+      setActiveTest(null);
+      setGradedTest(null);
+      setStage("config");
+    }
   }
 
   function handleCancel() {
@@ -83,25 +89,24 @@ export default function TestPage() {
 
   if (fetchingTopics) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="h-full flex items-center justify-center bg-slate-900">
         <p className="text-slate-400 animate-pulse">Loading topics…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
-      {/* Nav bar */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-        <h1 className="text-lg font-bold text-white">LearnFlow · Tests</h1>
-        <Link to="/learn" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
-          ← Back to learning
-        </Link>
+    <div className="h-full bg-slate-900 flex flex-col overflow-hidden">
+      {/* Minimal page header */}
+      <header className="flex items-center px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
+        <h1 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+          Tests
+        </h1>
       </header>
 
       <div className="flex flex-1 gap-0 overflow-hidden">
         {/* Sidebar: topic selector + history */}
-        <aside className="w-72 flex-shrink-0 border-r border-slate-700/50 flex flex-col p-5 gap-5 overflow-y-auto">
+        <aside className="w-64 flex-shrink-0 border-r border-slate-700/50 flex flex-col p-5 gap-5 overflow-y-auto">
           <div>
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wider block mb-2">
               Topic

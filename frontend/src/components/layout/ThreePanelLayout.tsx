@@ -117,17 +117,16 @@ export default function ThreePanelLayout() {
   });
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
+    <div className="h-full flex flex-col bg-slate-900">
       {/* Header Bar */}
       <header className="flex items-center justify-between px-4 py-2 bg-slate-800/80 backdrop-blur-md border-b border-slate-700/50">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-white tracking-tight">
-            LearnFlow
-          </h1>
-          {currentTopic && (
-            <span className="px-2.5 py-0.5 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+        <div className="flex items-center gap-2">
+          {currentTopic ? (
+            <span className="text-sm font-medium text-slate-200">
               {currentTopic.title}
             </span>
+          ) : (
+            <span className="text-sm text-slate-400">Select a topic to begin</span>
           )}
         </div>
 
@@ -163,7 +162,6 @@ export default function ThreePanelLayout() {
             </button>
           )}
 
-          {/* Context usage indicator placeholder */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-700/50 text-xs text-slate-400">
             <div className="w-2 h-2 rounded-full bg-green-400" />
             Ready

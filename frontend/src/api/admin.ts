@@ -56,6 +56,32 @@ export async function getMetrics(): Promise<AdminMetrics> {
   return data;
 }
 
+export interface ParticipantMasteryItem {
+  user_id: number;
+  email: string;
+  display_name: string | null;
+  avg_mastery: number;
+  concept_count: number;
+}
+
+export interface TestScoreDataPoint {
+  date: string;
+  avg_score_pct: number;
+  test_count: number;
+}
+
+export interface V2Metrics {
+  participant_mastery: ParticipantMasteryItem[];
+  test_scores_over_time: TestScoreDataPoint[];
+  avg_hints_per_question: number | null;
+  goal_completion_rate: number | null;
+}
+
+export async function getV2Metrics(): Promise<V2Metrics> {
+  const { data } = await client.get<V2Metrics>("/admin/metrics/v2");
+  return data;
+}
+
 export async function downloadCsvExport(filters: {
   user_id?: number;
   from_date?: string;

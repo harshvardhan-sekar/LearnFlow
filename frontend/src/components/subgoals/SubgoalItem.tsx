@@ -5,13 +5,21 @@ import type { Subgoal } from "../../types";
 
 interface SubgoalItemProps {
   subgoal: Subgoal;
+  masteryPct: number | null;
   onToggle: (id: string) => void;
   onEdit: (id: string, title: string) => void;
   onDelete: (id: string) => void;
 }
 
+function masteryBadgeStyle(pct: number): string {
+  if (pct >= 70) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+  if (pct >= 40) return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+  return "bg-red-500/20 text-red-400 border-red-500/30";
+}
+
 export default function SubgoalItem({
   subgoal,
+  masteryPct,
   onToggle,
   onEdit,
   onDelete,
@@ -47,6 +55,8 @@ export default function SubgoalItem({
     }
     setEditing(false);
   }
+
+  const masteryDisplayPct = masteryPct != null ? Math.round(masteryPct * 100) : null;
 
   return (
     <div
@@ -138,10 +148,19 @@ export default function SubgoalItem({
         </span>
       )}
 
-      {/* Mastery placeholder badge */}
-      <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded bg-slate-600/50 text-slate-400">
-        —%
-      </span>
+      {/* Mastery badge */}
+      {masteryDisplayPct != null ? (
+        <span
+          className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded border font-medium ${masteryBadgeStyle(masteryDisplayPct)}`}
+          title={`Mastery: ${masteryDisplayPct}%`}
+        >
+          {masteryDisplayPct}%
+        </span>
+      ) : (
+        <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded bg-slate-700/40 text-slate-600 border border-slate-700/40">
+          —
+        </span>
+      )}
 
       {/* Delete button (visible on hover) */}
       <button
