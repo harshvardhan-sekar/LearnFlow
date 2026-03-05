@@ -11,6 +11,7 @@ interface BackendSubgoal {
   sort_order: number;
   is_completed: boolean;
   is_ai_generated: boolean;
+  concept_node_key: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -25,6 +26,7 @@ function toSubgoal(raw: BackendSubgoal): Subgoal {
     description: raw.description ?? "",
     order_index: raw.sort_order,
     is_completed: raw.is_completed,
+    concept_node_key: raw.concept_node_key || null,
     source: raw.is_ai_generated ? "ai_generated" : "user_created",
     created_at: raw.created_at,
     updated_at: raw.updated_at,

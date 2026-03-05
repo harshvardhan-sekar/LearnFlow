@@ -10,7 +10,7 @@ export default function SessionShell() {
     phase,
     loading,
     assessmentQuestions,
-    assessmentType,
+    assessmentType: _assessmentType,
     submitAssessment,
     submitReflection,
   } = useSession();

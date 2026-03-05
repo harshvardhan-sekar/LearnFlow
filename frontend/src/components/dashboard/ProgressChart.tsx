@@ -134,7 +134,7 @@ export default function ProgressChart({
               }}
               labelStyle={{ color: "#94a3b8" }}
               itemStyle={{ color: "#818cf8" }}
-              formatter={(value: number) => [`${value}%`, "Test score"]}
+              formatter={(value: number | undefined) => [`${value ?? 0}%`, "Test score"] as [string, string]}
             />
             <Line
               type="monotone"
