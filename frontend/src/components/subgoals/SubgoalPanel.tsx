@@ -84,16 +84,28 @@ export default function SubgoalPanel() {
 
   const handleToggle = useCallback(
     async (id: string) => {
+      // Optimistic update for snappy UI
+      const prev = subgoals;
+      setSubgoals(
+        subgoals.map((s) =>
+          s.id === id ? { ...s, is_completed: !s.is_completed } : s
+        )
+      );
       try {
         const updated = await subgoalsApi.toggleSubgoal(id, sessionId);
         setSubgoals(
-          subgoals.map((s) => (s.id === id ? updated : s))
+          prev.map((s) => (s.id === id ? updated : s))
         );
         logEvent(updated.is_completed ? "subgoal_check" : "subgoal_uncheck", {
           subgoal_id: id,
         });
-      } catch {
-        showToast("Failed to update subgoal.");
+      } catch (err: unknown) {
+        // Revert optimistic update
+        setSubgoals(prev);
+        const detail =
+          err instanceof Error ? err.message : "Unknown error";
+        console.error("Subgoal toggle failed:", err);
+        showToast(`Failed to update subgoal: ${detail}`);
       }
     },
     [sessionId, subgoals, setSubgoals, logEvent, showToast]

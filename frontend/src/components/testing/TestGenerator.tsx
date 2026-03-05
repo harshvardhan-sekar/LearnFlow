@@ -28,10 +28,18 @@ export default function TestGenerator({
       const test = await generateTest(topicId, numQuestions, gradingMode, sessionId);
       onTestGenerated(test);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Failed to generate test. Make sure a concept graph exists for this topic.";
+      // Extract detailed error from Axios response if available
+      let msg = "Failed to generate test.";
+      if (err && typeof err === "object" && "response" in err) {
+        const resp = (err as { response?: { data?: { detail?: string }; status?: number } }).response;
+        if (resp?.data?.detail) {
+          msg = resp.data.detail;
+        } else if (resp?.status === 422) {
+          msg = "No concept graph exists yet. Please wait a moment for it to generate, then try again.";
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
       setError(msg);
     } finally {
       setLoading(false);

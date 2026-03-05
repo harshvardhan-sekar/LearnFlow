@@ -1,5 +1,6 @@
 """Assessments router — GPT-generated pre/post assessments with auto-grading."""
 
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,12 +9,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.assessment import Assessment
+from models.concept import ConceptGraph, ConceptNode
 from models.database import get_db
+from models.mastery import MasteryState
 from models.session import Session
 from models.topic import LearningTopic
 from models.user import User
 from services.llm_client import json_completion
 from utils.dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
 
@@ -91,6 +96,77 @@ async def _generate_questions(topic_title: str, assessment_type: str) -> list[di
     if not questions:
         raise HTTPException(status_code=500, detail="Failed to generate assessment questions")
     return questions
+
+
+async def _init_mastery_from_assessment(
+    user_id: int,
+    session_id: int,
+    score_pct: float,
+    db: AsyncSession,
+) -> None:
+    """Set initial mastery for all concept nodes based on pre-assessment score.
+
+    The pre-assessment score provides a rough baseline. We apply a scaled
+    initial mastery: easy concepts get (score_pct * 0.8), medium (score_pct * 0.5),
+    hard concepts get (score_pct * 0.3). Only creates mastery rows if they
+    don't already exist.
+    """
+    # Find the topic from the session
+    session_result = await db.execute(
+        select(Session).where(Session.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if session is None or session.topic_id is None:
+        return
+
+    # Find concept graph for the topic
+    cg_result = await db.execute(
+        select(ConceptGraph).where(ConceptGraph.topic_id == session.topic_id)
+    )
+    cg = cg_result.scalar_one_or_none()
+    if cg is None:
+        return  # No concept graph yet
+
+    # Get all concept nodes
+    nodes_result = await db.execute(
+        select(ConceptNode).where(ConceptNode.graph_id == cg.id)
+    )
+    nodes = nodes_result.scalars().all()
+    if not nodes:
+        return
+
+    difficulty_scale = {"easy": 0.8, "medium": 0.5, "hard": 0.3}
+    now = datetime.now(UTC)
+
+    for node in nodes:
+        # Check if mastery already exists
+        existing = await db.execute(
+            select(MasteryState).where(
+                MasteryState.user_id == user_id,
+                MasteryState.concept_node_id == node.id,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            continue  # Don't overwrite existing mastery
+
+        scale = difficulty_scale.get(node.difficulty, 0.5)
+        initial_mastery = round(score_pct * scale, 4)
+
+        db.add(MasteryState(
+            user_id=user_id,
+            concept_node_id=node.id,
+            mastery_score=initial_mastery,
+            attempts_count=1,
+            correct_count=1 if score_pct >= 0.5 else 0,
+            last_tested_at=now,
+        ))
+
+    await db.commit()
+    logger.info(
+        "Initialized mastery for %d concepts from pre-assessment (%.0f%%)",
+        len(nodes),
+        score_pct * 100,
+    )
 
 
 def _grade_assessment(questions: list[dict], answers: dict) -> tuple[float, float]:
@@ -177,6 +253,19 @@ async def submit_answers(
 
     await db.commit()
     await db.refresh(assessment)
+
+    # ── Initialize concept mastery from pre-assessment score ────────────
+    if assessment.assessment_type == "pre" and max_score > 0:
+        try:
+            await _init_mastery_from_assessment(
+                user_id=user.id,
+                session_id=assessment.session_id,
+                score_pct=score / max_score,
+                db=db,
+            )
+        except Exception:
+            logger.exception("Failed to init mastery from pre-assessment")
+
     return assessment
 
 

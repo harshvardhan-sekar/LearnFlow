@@ -27,35 +27,63 @@ function MasteryBadge({ value }: { value: number }) {
 }
 
 /* ── Session Timer ──────────────────────────────────────────────────── */
+
+/** Parse a backend timestamp (may lack trailing Z) into epoch ms. */
+function parseTs(ts: string): number {
+  // Ensure the ISO string is treated as UTC if it has no timezone indicator
+  const normalized = ts.endsWith("Z") || ts.includes("+") || ts.includes("-", 10) ? ts : ts + "Z";
+  return new Date(normalized).getTime();
+}
+
 function SessionTimer() {
   const { activeSession } = useSession();
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (activeSession?.status === "active" && activeSession.started_at) {
-      const startTime = new Date(activeSession.started_at).getTime();
-      intervalRef.current = setInterval(() => {
-        setElapsed(Date.now() - startTime);
-      }, 1000);
-    } else if (activeSession?.ended_at && activeSession?.started_at) {
-      setElapsed(
-        new Date(activeSession.ended_at).getTime() -
-          new Date(activeSession.started_at).getTime()
-      );
+    // Clear any previous interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+
+    if (!activeSession?.started_at) {
+      setElapsed(0);
+      return;
+    }
+
+    const startMs = parseTs(activeSession.started_at);
+
+    if (activeSession.status === "active") {
+      // Tick every second while active
+      const tick = () => setElapsed(Math.max(0, Date.now() - startMs));
+      tick(); // set immediately
+      intervalRef.current = setInterval(tick, 1000);
+    } else if (activeSession.status === "paused") {
+      // When paused, freeze the timer at the current elapsed time
+      setElapsed(Math.max(0, Date.now() - startMs));
+    } else if (activeSession.ended_at) {
+      // Completed: show final duration
+      const endMs = parseTs(activeSession.ended_at);
+      setElapsed(Math.max(0, endMs - startMs));
+    }
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [activeSession]);
+  }, [activeSession?.status, activeSession?.started_at, activeSession?.ended_at]);
 
-  const totalSeconds = Math.floor(elapsed / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const totalSeconds = Math.max(0, Math.floor(elapsed / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
+  const isPaused = activeSession?.status === "paused";
 
   return (
-    <span className="font-mono text-sm text-slate-300">
-      {minutes}:{String(seconds).padStart(2, "0")}
+    <span className={`font-mono text-sm ${isPaused ? "text-amber-400" : "text-slate-300"}`}>
+      {hours > 0 && `${hours}:`}
+      {hours > 0 ? String(minutes).padStart(2, "0") : minutes}:{String(seconds).padStart(2, "0")}
+      {isPaused && <span className="ml-1 text-xs opacity-60">⏸</span>}
     </span>
   );
 }

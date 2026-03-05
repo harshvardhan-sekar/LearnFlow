@@ -195,6 +195,7 @@ function DashboardInner({ topicId }: { topicId: number }) {
   } = useMastery();
 
   const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [planItems, setPlanItems] = useState<StudyPlanItem[]>([]);
 
   // Quiz overlay state
@@ -221,6 +222,7 @@ function DashboardInner({ topicId }: { topicId: number }) {
 
   async function handleGenerateStudyPlan() {
     setPlanLoading(true);
+    setPlanError(null);
     try {
       const data = await generateStudyPlan(topicId);
       const plan = data.study_plan;
@@ -228,8 +230,13 @@ function DashboardInner({ topicId }: { topicId: number }) {
         setStudyPlan(plan);
         setPlanItems(plan.items.map((item) => ({ ...item })));
       }
-    } catch {
-      // silent
+    } catch (err: unknown) {
+      let msg = "Failed to generate study plan.";
+      if (err && typeof err === "object" && "response" in err) {
+        const resp = (err as { response?: { data?: { detail?: string } } }).response;
+        if (resp?.data?.detail) msg = resp.data.detail;
+      }
+      setPlanError(msg);
     } finally {
       setPlanLoading(false);
     }
@@ -383,6 +390,12 @@ function DashboardInner({ topicId }: { topicId: number }) {
               )}
             </button>
           </div>
+
+          {planError && (
+            <div className="mt-3 text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-2">
+              {planError}
+            </div>
+          )}
 
           {studyPlan && planItems.length > 0 && (
             <div className="mt-4 space-y-3">

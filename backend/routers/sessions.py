@@ -1,18 +1,23 @@
 """Sessions router — start, end, pause, resume, list, state, export."""
 
+import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.database import get_db
+from engines.concept_extractor import extract_concept_graph
+from models.concept import ConceptGraph, ConceptNode
+from models.database import get_db, async_session as async_session_maker
 from models.session import Session
 from models.topic import LearningTopic
 from models.user import User
 from utils.dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -53,26 +58,85 @@ async def _get_own_session_or_404(
     return session
 
 
+# ── Background helpers ───────────────────────────────────────────────────
+
+
+async def _ensure_concept_graph(topic_id: int, topic_title: str, topic_description: str | None) -> None:
+    """Generate a concept graph for a topic if one doesn't exist yet.
+
+    Runs as a background task so session creation isn't blocked.
+    Uses its own DB session to avoid conflicts with the request session.
+    """
+    async with async_session_maker() as db:
+        try:
+            existing = await db.execute(
+                select(ConceptGraph).where(ConceptGraph.topic_id == topic_id)
+            )
+            if existing.scalar_one_or_none() is not None:
+                return  # Already exists
+
+            logger.info("Auto-generating concept graph for topic %d (%s)", topic_id, topic_title)
+            graph_data = await extract_concept_graph(topic_title, topic_description)
+
+            cg = ConceptGraph(topic_id=topic_id, graph_data=graph_data.model_dump())
+            db.add(cg)
+            await db.flush()
+            await db.refresh(cg)
+
+            for node_data in graph_data.nodes:
+                cn = ConceptNode(
+                    graph_id=cg.id,
+                    key=node_data.key,
+                    name=node_data.name,
+                    description=node_data.description,
+                    difficulty=node_data.difficulty,
+                    prerequisites=node_data.prerequisites,
+                    sort_order=node_data.sort_order,
+                )
+                db.add(cn)
+
+            await db.commit()
+            logger.info("Concept graph created for topic %d with %d nodes", topic_id, len(graph_data.nodes))
+        except Exception:
+            logger.exception("Failed to auto-generate concept graph for topic %d", topic_id)
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @router.post("", response_model=SessionResponse, status_code=201)
 async def start_session(
     body: SessionCreate,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Start a new learning session for a topic."""
+    """Start a new learning session for a topic.
+
+    Also triggers concept graph generation in the background if one
+    doesn't already exist for the topic. The concept graph is needed by
+    the test generator, study plan, and dashboard mastery features.
+    """
     # Verify topic exists
     topic_result = await db.execute(
         select(LearningTopic).where(LearningTopic.id == body.topic_id)
     )
-    if topic_result.scalar_one_or_none() is None:
+    topic = topic_result.scalar_one_or_none()
+    if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
 
     session = Session(user_id=user.id, topic_id=body.topic_id, status="active")
     db.add(session)
     await db.commit()
     await db.refresh(session)
+
+    # Kick off concept graph generation in the background
+    background_tasks.add_task(
+        _ensure_concept_graph,
+        topic_id=body.topic_id,
+        topic_title=topic.title,
+        topic_description=topic.description,
+    )
+
     return session
 
 

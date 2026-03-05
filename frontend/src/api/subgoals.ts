@@ -86,7 +86,8 @@ export async function toggleSubgoal(
 ): Promise<Subgoal> {
   const params = sessionId ? `?session_id=${sessionId}` : "";
   const { data } = await client.put<BackendSubgoal>(
-    `/subgoals/${subgoalId}/toggle${params}`
+    `/subgoals/${subgoalId}/toggle${params}`,
+    {}  // explicit empty body — some proxies reject bodyless PUT
   );
   return toSubgoal(data);
 }
