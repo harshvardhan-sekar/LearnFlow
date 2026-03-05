@@ -66,15 +66,23 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
             />
           ))}
         </div>
-        <span
-          className={`text-xs px-2 py-0.5 rounded-md capitalize ${
-            test.grading_mode === "informal"
-              ? "text-emerald-400 bg-emerald-400/10"
-              : "text-violet-400 bg-violet-400/10"
-          }`}
-        >
-          {test.grading_mode}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs px-2 py-0.5 rounded-md capitalize ${
+              test.grading_mode === "informal"
+                ? "text-emerald-400 bg-emerald-400/10"
+                : "text-violet-400 bg-violet-400/10"
+            }`}
+          >
+            {test.grading_mode}
+          </span>
+          <button
+            onClick={onCancel}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Question card */}

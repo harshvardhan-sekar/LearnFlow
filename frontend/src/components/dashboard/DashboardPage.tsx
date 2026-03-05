@@ -20,8 +20,8 @@ function exportDashboardMarkdown(
   masteredPct: number,
   masteredCount: number,
   totalCount: number,
-  concepts: Array<{ name: string; mastery_pct: number; category?: string }>,
-  goals: Array<{ concept_name: string; target_mastery: number; current_mastery?: number; deadline?: string; is_completed?: boolean }>,
+  concepts: Array<{ concept_name: string; mastery_score: number; difficulty?: string }>,
+  goals: Array<{ concept_name: string | null; target_mastery: number; current_mastery?: number; deadline?: string | null; is_completed?: boolean }>,
   studyPlan: { summary?: string; items: StudyPlanItem[] } | null,
 ) {
   const lines: string[] = [];
@@ -37,8 +37,8 @@ function exportDashboardMarkdown(
   lines.push("");
   lines.push("| Concept | Mastery |");
   lines.push("|---------|---------|");
-  for (const c of concepts.sort((a, b) => b.mastery_pct - a.mastery_pct)) {
-    lines.push(`| ${c.name} | ${Math.round(c.mastery_pct)}% |`);
+  for (const c of [...concepts].sort((a, b) => b.mastery_score - a.mastery_score)) {
+    lines.push(`| ${c.concept_name} | ${Math.round(c.mastery_score)}% |`);
   }
   lines.push("");
 
@@ -48,7 +48,7 @@ function exportDashboardMarkdown(
     lines.push("");
     for (const g of goals) {
       const status = g.is_completed ? "✅" : "⏳";
-      lines.push(`- ${status} **${g.concept_name}** — target ${g.target_mastery}%${g.deadline ? ` by ${g.deadline}` : ""}`);
+      lines.push(`- ${status} **${g.concept_name ?? "General"}** — target ${g.target_mastery}%${g.deadline ? ` by ${g.deadline}` : ""}`);
     }
     lines.push("");
   }
