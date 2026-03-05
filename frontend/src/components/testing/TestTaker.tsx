@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { AnswerItem, QuestionResult, TestRecord } from "../../api/tests";
+import type { AnswerItem, TestRecord } from "../../api/tests";
 import { gradeTest } from "../../api/tests";
+import ThoughtBubble from "./ThoughtBubble";
 
 interface TestTakerProps {
   test: TestRecord;
@@ -15,6 +16,8 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // track which question (by id) has its ThoughtBubble open
+  const [hintOpenFor, setHintOpenFor] = useState<number | null>(null);
 
   const question = questions[currentIndex];
   const total = questions.length;
@@ -72,7 +75,34 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
 
       {/* Question card */}
       <div className="flex-1 flex flex-col gap-5">
-        <p className="text-slate-100 text-base leading-relaxed">{question.question_text}</p>
+        {/* Question text + hint toggle */}
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-slate-100 text-base leading-relaxed flex-1">
+              {question.question_text}
+            </p>
+            <button
+              onClick={() =>
+                setHintOpenFor(hintOpenFor === question.id ? null : question.id)
+              }
+              title="Get a hint"
+              className={`flex-shrink-0 mt-0.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                hintOpenFor === question.id
+                  ? "border-indigo-500 bg-indigo-900/30 text-indigo-300"
+                  : "border-slate-600 text-slate-500 hover:border-slate-500 hover:text-slate-300"
+              }`}
+            >
+              💭 Hint
+            </button>
+          </div>
+          {hintOpenFor === question.id && (
+            <ThoughtBubble
+              questionId={question.id}
+              conceptKey={question.concept_node_id?.toString() ?? ""}
+              onClose={() => setHintOpenFor(null)}
+            />
+          )}
+        </div>
 
         {question.question_type === "objective" && question.options ? (
           <MCQOptions
@@ -102,7 +132,7 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
       {/* Navigation */}
       <div className="flex gap-3 mt-6">
         <button
-          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+          onClick={() => { setHintOpenFor(null); setCurrentIndex((i) => Math.max(0, i - 1)); }}
           disabled={currentIndex === 0}
           className="flex-1 py-2 rounded-lg border border-slate-700 text-slate-400
                      hover:text-slate-200 hover:border-slate-600 disabled:opacity-30
@@ -123,7 +153,7 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
           </button>
         ) : (
           <button
-            onClick={() => setCurrentIndex((i) => Math.min(total - 1, i + 1))}
+            onClick={() => { setHintOpenFor(null); setCurrentIndex((i) => Math.min(total - 1, i + 1)); }}
             className="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600
                        text-slate-200 font-medium transition-colors text-sm"
           >
@@ -137,7 +167,7 @@ export default function TestTaker({ test, onGraded, onCancel }: TestTakerProps) 
         {questions.map((q, idx) => (
           <button
             key={q.id}
-            onClick={() => setCurrentIndex(idx)}
+            onClick={() => { setHintOpenFor(null); setCurrentIndex(idx); }}
             title={`Question ${idx + 1}`}
             className={`w-2 h-2 rounded-full transition-colors ${
               idx === currentIndex
