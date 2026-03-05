@@ -1,5 +1,5 @@
 import client from "./client";
-import type { DashboardData, LearnerGoal } from "../types";
+import type { DashboardData, LearnerGoal, StudyPlan } from "../types";
 
 export interface CreateGoalBody {
   concept_node_id?: number;
@@ -23,7 +23,7 @@ export async function getDashboard(topicId: number): Promise<DashboardData> {
 
 export async function saveDashboard(
   topicId: number,
-  study_plan: Record<string, unknown> | null
+  study_plan: StudyPlan | null
 ): Promise<DashboardData> {
   const { data } = await client.put<DashboardData>(`/dashboard/${topicId}`, {
     study_plan,
@@ -72,4 +72,13 @@ export async function overrideMastery(
     concept_node_id: conceptNodeId,
     new_mastery: newMastery,
   });
+}
+
+export async function generateStudyPlan(
+  topicId: number
+): Promise<DashboardData> {
+  const { data } = await client.post<DashboardData>(
+    `/dashboard/${topicId}/study-plan`
+  );
+  return data;
 }

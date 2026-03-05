@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import type { LearningTopic } from "../../types";
 import type { TestRecord } from "../../api/tests";
@@ -12,8 +12,13 @@ import GradingResult from "./GradingResult";
 type Stage = "config" | "taking" | "result";
 
 export default function TestPage() {
+  const [searchParams] = useSearchParams();
+  const topicParam = searchParams.get("topic");
+
   const [topics, setTopics] = useState<LearningTopic[]>([]);
-  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(
+    topicParam ? Number(topicParam) : null
+  );
   const [fetchingTopics, setFetchingTopics] = useState(true);
   const [history, setHistory] = useState<TestHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -22,16 +27,18 @@ export default function TestPage() {
   const [activeTest, setActiveTest] = useState<TestRecord | null>(null);
   const [gradedTest, setGradedTest] = useState<TestRecord | null>(null);
 
-  // Load topics on mount
+  // Load topics on mount; only auto-select first topic if no URL param provided
   useEffect(() => {
     client
       .get<LearningTopic[]>("/topics")
       .then(({ data }) => {
         setTopics(data);
-        if (data.length > 0) setSelectedTopicId(Number(data[0].id));
+        if (data.length > 0 && !topicParam) {
+          setSelectedTopicId(Number(data[0].id));
+        }
       })
       .finally(() => setFetchingTopics(false));
-  }, []);
+  }, [topicParam]);
 
   // Load history whenever topic changes
   useEffect(() => {

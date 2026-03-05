@@ -129,12 +129,26 @@ export interface LearnerGoal {
   updated_at: string;
 }
 
+export interface StudyPlanItem {
+  concept_name: string;
+  priority: "high" | "medium" | "low";
+  estimated_time_min: number;
+  rationale: string;
+  checked: boolean;
+}
+
+export interface StudyPlan {
+  generated_at: string;
+  summary: string;
+  items: StudyPlanItem[];
+}
+
 export interface DashboardData {
   topic_id: number;
   topic_title: string;
   mastery_snapshot: MasterySnapshot;
   goals: LearnerGoal[];
-  study_plan: Record<string, unknown> | null;
+  study_plan: StudyPlan | null;
 }
 
 // ── Admin types ─────────────────────────────────────────────────────────

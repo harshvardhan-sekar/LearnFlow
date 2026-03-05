@@ -6,17 +6,19 @@ import {
   type ReactNode,
 } from "react";
 import { getDashboard, overrideMastery as apiOverride } from "../api/dashboard";
-import type { MasterySnapshot, LearnerGoal, DashboardData } from "../types";
+import type { MasterySnapshot, LearnerGoal, DashboardData, StudyPlan } from "../types";
 
 interface MasteryContextValue {
   snapshot: MasterySnapshot | null;
   goals: LearnerGoal[];
+  studyPlan: StudyPlan | null;
   topicId: number | null;
   topicTitle: string;
   loading: boolean;
   loadDashboard: (topicId: number) => Promise<void>;
   overrideMastery: (conceptNodeId: number, newMastery: number) => Promise<void>;
   setGoals: (goals: LearnerGoal[]) => void;
+  setStudyPlan: (plan: StudyPlan | null) => void;
   refresh: () => Promise<void>;
 }
 
@@ -25,6 +27,7 @@ const MasteryContext = createContext<MasteryContextValue | null>(null);
 export function MasteryProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<MasterySnapshot | null>(null);
   const [goals, setGoals] = useState<LearnerGoal[]>([]);
+  const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
   const [topicId, setTopicId] = useState<number | null>(null);
   const [topicTitle, setTopicTitle] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,6 +38,7 @@ export function MasteryProvider({ children }: { children: ReactNode }) {
       const data: DashboardData = await getDashboard(tid);
       setSnapshot(data.mastery_snapshot);
       setGoals(data.goals);
+      setStudyPlan(data.study_plan);
       setTopicId(tid);
       setTopicTitle(data.topic_title);
     } catch {
@@ -61,12 +65,14 @@ export function MasteryProvider({ children }: { children: ReactNode }) {
       value={{
         snapshot,
         goals,
+        studyPlan,
         topicId,
         topicTitle,
         loading,
         loadDashboard,
         overrideMastery,
         setGoals,
+        setStudyPlan,
         refresh,
       }}
     >

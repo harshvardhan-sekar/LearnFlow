@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from engines.recommendation_engine import get_recommendations
 from models.concept import ConceptGraph, ConceptNode
 from models.dashboard_state import DashboardState, LearnerGoal
 from models.database import get_db
 from models.mastery import MasteryState
 from models.topic import LearningTopic
 from models.user import User
+from services.llm_client import json_completion
 from utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -398,3 +400,127 @@ async def delete_goal(
 
     await db.delete(goal)
     await db.commit()
+
+
+@router.post("/{topic_id}/study-plan", response_model=DashboardResponse)
+async def generate_study_plan(
+    topic_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate and persist a GPT study plan based on mastery + goals.
+
+    Uses the recommendation engine to determine concept priorities, then
+    asks GPT to produce a structured, prioritized study checklist. The plan
+    is stored in DashboardState.study_plan and returned as part of the full
+    dashboard response.
+    """
+    topic_result = await db.execute(
+        select(LearningTopic).where(LearningTopic.id == topic_id)
+    )
+    topic = topic_result.scalar_one_or_none()
+    if topic is None:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    # Fetch recommendations (weakest concepts first)
+    recs = await get_recommendations(user_id=user.id, topic_id=topic_id, db=db)
+    if not recs:
+        raise HTTPException(
+            status_code=422,
+            detail="No concept graph for this topic — cannot generate study plan",
+        )
+
+    # Fetch active learner goals for context
+    goals_result = await db.execute(
+        select(LearnerGoal).where(
+            LearnerGoal.user_id == user.id,
+            LearnerGoal.topic_id == topic_id,
+            LearnerGoal.is_completed == False,  # noqa: E712
+        )
+    )
+    active_goals = goals_result.scalars().all()
+
+    # Build prompt context
+    concept_lines = "\n".join(
+        f"- {r['concept_name']} (mastery: {round(r['mastery'] * 100)}%, "
+        f"priority weight: {r['focus_weight']:.3f})"
+        for r in recs
+    )
+    goal_lines = (
+        "\n".join(
+            f"- Target mastery {int(g.target_mastery * 100)}% "
+            + (
+                f"for concept node {g.concept_node_id}"
+                if g.concept_node_id
+                else "(overall)"
+            )
+            + (f", deadline: {g.deadline}" if g.deadline else "")
+            for g in active_goals
+        )
+        if active_goals
+        else "No explicit goals set."
+    )
+
+    system_prompt = (
+        "You are an expert learning advisor. Given a learner's concept mastery data "
+        "and their stated goals, produce a concise, prioritized study plan. "
+        "Return ONLY a JSON object with this exact structure:\n"
+        '{\n'
+        '  "summary": "1-2 sentence overview of the plan",\n'
+        '  "items": [\n'
+        '    {\n'
+        '      "concept_name": "string",\n'
+        '      "priority": "high" | "medium" | "low",\n'
+        '      "estimated_time_min": integer,\n'
+        '      "rationale": "1 sentence explanation",\n'
+        '      "checked": false\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+        "Include 5-8 items. Order by priority (high first). "
+        "Estimate realistic study times (15-90 min each)."
+    )
+
+    user_message = (
+        f"Topic: {topic.title}\n\n"
+        f"Concept mastery (sorted weakest to strongest):\n{concept_lines}\n\n"
+        f"Learner goals:\n{goal_lines}\n\n"
+        "Generate a prioritized study plan."
+    )
+
+    try:
+        result = await json_completion(
+            messages=[{"role": "user", "content": user_message}],
+            system_prompt=system_prompt,
+            temperature=0.4,
+            max_tokens=1024,
+        )
+        plan_data: dict = result["parsed"]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate study plan: {exc}"
+        )
+
+    # Attach generated_at timestamp
+    plan_data["generated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Persist to DashboardState
+    ds_result = await db.execute(
+        select(DashboardState).where(
+            DashboardState.user_id == user.id,
+            DashboardState.topic_id == topic_id,
+        )
+    )
+    ds = ds_result.scalar_one_or_none()
+    if ds is None:
+        ds = DashboardState(
+            user_id=user.id,
+            topic_id=topic_id,
+            study_plan=plan_data,
+        )
+        db.add(ds)
+    else:
+        ds.study_plan = plan_data
+
+    await db.commit()
+    return await get_dashboard(topic_id=topic_id, user=user, db=db)
