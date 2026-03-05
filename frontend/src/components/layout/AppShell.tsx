@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useSession } from "../../contexts/SessionContext";
+import { useAuth } from "../../contexts/AuthContext";
 import client from "../../api/client";
 import type { ReactNode } from "react";
 
@@ -40,6 +41,7 @@ function NavItem({
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { currentTopic } = useSession();
+  const { user, logout } = useAuth();
   const [mastery, setMastery] = useState<MasterySummary | null>(null);
 
   useEffect(() => {
@@ -175,6 +177,30 @@ export default function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
         )}
+
+        {/* Sign out button */}
+        <button
+          onClick={logout}
+          title={user?.email ?? "Sign out"}
+          className="w-full flex flex-col items-center gap-1.5 px-1 py-3 rounded-xl transition-all duration-150 text-slate-500 hover:text-red-400 hover:bg-slate-700/50"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+            />
+          </svg>
+          <span className="text-[9px] font-semibold uppercase tracking-widest leading-none">
+            Sign out
+          </span>
+        </button>
       </nav>
 
       {/* Main content area */}
